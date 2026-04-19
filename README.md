@@ -2,7 +2,7 @@
 
 LLM-driven personal reading tracker. Add books, articles, papers, podcasts, videos, and courses via natural language through Claude Code.
 
-Data lives in `reading.yaml`. Git history provides the timeline — no date fields needed.
+Data lives in `reading.yaml`. Each item gets a folder in `texts/` that serves as a self-contained agent context — drop into any folder and the LLM picks up where you left off. Git history provides the timeline.
 
 ## Install
 
@@ -44,6 +44,7 @@ Invoke the skill in Claude Code with natural language:
 /reading-tracker what am I reading?
 /reading-tracker what have I read about distributed systems?
 /reading-tracker add note to DDIA: chapter 5 is great
+/reading-tracker let's discuss DDIA
 ```
 
 Or add an item with just a URL:
@@ -61,9 +62,11 @@ version: 1
 items:
   - label: "DDIA"
     url: "https://dataintensive.net"
+    path: "texts/ddia"
     status: reading
     notes: "Chapter 5 is great"
   - url: "https://example.com/article"
+    path: "texts/some-article"
     status: want-to-read
 ```
 
@@ -72,7 +75,7 @@ items:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `url` | one of `url`/`path` | Web URL |
-| `path` | one of `url`/`path` | Path to local file in `texts/` |
+| `path` | one of `url`/`path` | Item folder in `texts/` |
 | `label` | no | Human-friendly name |
 | `status` | yes | `want-to-read`, `reading`, or `done` |
 | `notes` | no | Freeform notes |
@@ -83,9 +86,22 @@ items:
 - `reading` — in progress
 - `done` — finished
 
-## `texts/` Directory
+## Folder-Agent Pattern
 
-Store local copies of reading material (markdown, plain text) in `texts/`. This directory is user-managed — the skill does not write to it. Reference files here using the `path` field on items.
+Each reading item gets a folder in `texts/` that acts as an agent context:
+
+```
+texts/ddia/
+  CLAUDE.md           # agent identity — auto-loads when you cd here
+  conversations.md    # accumulated themes from discussions
+  content.md          # reading material (user-managed, optional)
+```
+
+**Via skill:** `/reading-tracker let's discuss DDIA` loads the folder context remotely and resumes the conversation. After discussion, the skill updates `conversations.md` with themes and refreshes `CLAUDE.md`.
+
+**Via folder:** `cd texts/ddia` in Claude Code — `CLAUDE.md` auto-loads and you're in context. No skill invocation needed.
+
+Both paths converge on the same files.
 
 ## How It Works
 
@@ -95,6 +111,7 @@ The skill uses the GitHub REST Contents API for all reads and writes — no loca
 2. Modify in memory
 3. PUT with modified content + SHA from step 1
 4. Descriptive commit message (e.g., "Add: DDIA", "Finished: DDIA")
+5. Create or update item folder (`CLAUDE.md`, `conversations.md`) as needed
 
 ## License
 
