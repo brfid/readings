@@ -1,2 +1,5 @@
 version: 1
-items: []
+items:
+  - url: "https://every.to/guides/compound-engineering"
+    path: "texts/compound-engineering"
+    status: want-to-read
