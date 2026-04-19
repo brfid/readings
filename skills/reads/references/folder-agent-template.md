@@ -68,10 +68,31 @@ Each entry appended by the skill uses this format:
 - When a conversation resolves a previously open thread, note that explicitly
 - Date is the current date, not a timestamp
 
+### Growth management
+
+When conversations.md exceeds ~50 entries or becomes unwieldy:
+- Summarize older entries (keeping the 10 most recent intact) into a `## Summary (before {date})` section at the top
+- Preserve all open threads from summarized entries
+- The goal is to keep the file useful for cold-start resumption without unbounded growth
+
 ## Folder naming
 
-Derive folder name from label or URL:
+Derive folder name from the label if provided, otherwise from the URL.
+
+**From label:**
 - Lowercase, hyphens for spaces
-- Strip articles (a/an/the) from start
-- Max 40 characters
-- Examples: `ddia`, `raft-paper`, `building-microservices`, `some-interesting-article`
+- Strip leading articles (a/an/the)
+- Max 40 characters, truncate at word boundary
+- Examples: `ddia`, `raft-paper`, `building-microservices`
+
+**From URL (when no label):**
+- Use the last meaningful path segment, stripping file extensions
+- Drop query strings, fragments, and common prefixes like `www.`
+- If path is empty or just `/`, use the domain minus TLD
+- Lowercase, hyphens for separators
+- Max 40 characters, truncate at word boundary
+- Examples:
+  - `https://example.com/blog/raft-explained` → `raft-explained`
+  - `https://arxiv.org/abs/2103.04992` → `2103-04992`
+  - `https://every.to/guides/compound-engineering` → `compound-engineering`
+  - `https://example.com/` → `example`
