@@ -32,7 +32,7 @@ Status: {status}
 
 - `{label or url}`: use label as heading if available, otherwise URL
 - `{url_line}`: `URL: {url}` — omit line entirely if no url
-- `{path_line}`: `Path: texts/{folder-name}/content.md` — always present
+- `{path_line}`: `Path: texts/{folder-name}/` — always present, matches `path` in reading.yaml
 - Status: copy from reading.yaml item
 - Reading Context: "No context yet." on first create
 - Key Themes, Open Questions, Connections: empty on first create, just the heading

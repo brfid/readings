@@ -6,7 +6,7 @@ argument-hint: "[natural language: add, start, finish, query, search, update not
 
 # Reading Tracker
 
-Manage a personal reading list stored as YAML in a GitHub repo. Each item can have a folder in `texts/` that acts as a standalone agent context — CLAUDE.md, conversation history, and reading material.
+Manage a personal reading list stored as YAML in a GitHub repo. Every item gets a folder in `texts/` that acts as a standalone agent context — CLAUDE.md, conversation history, and optional reading material. The folder is the agent: same model, different folder, different specialist.
 
 ## Configuration
 
@@ -80,6 +80,7 @@ items:
     status: reading
     notes: "Chapter 5 is great"
   - url: "https://example.com/article"
+    path: "texts/some-article"
     status: want-to-read
 ```
 

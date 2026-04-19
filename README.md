@@ -86,6 +86,16 @@ items:
 - `reading` — in progress
 - `done` — finished
 
+## Design Principles
+
+**Folder as agent.** An agent is not a framework or an orchestration layer — it's a model pointed at a folder with enough context that you don't have to re-explain everything each time. Different folder, same model, different specialist. Each reading item's folder is a self-contained agent context. See [The Folder Is the Agent](https://every.to/source-code/the-folder-is-the-agent) by Kieran Klaassen.
+
+**Git as metadata.** No date fields, no timestamps in YAML. Git history is the timeline — commit messages record what happened, commit timestamps record when.
+
+**LLM-native matching.** No algorithmic search or fuzzy matching code. The skill reads the data, the LLM uses judgment to match user references to items. Ambiguity is resolved by asking, not by heuristics.
+
+**Two interaction modes.** Every feature works both remotely (via skill + GitHub API) and locally (via `cd` + CLAUDE.md auto-load). Both paths read and write the same files.
+
 ## Folder-Agent Pattern
 
 Each reading item gets a folder in `texts/` that acts as an agent context:
