@@ -1,0 +1,10 @@
+{
+  "name": "reading-tracker",
+  "version": "0.1.0",
+  "description": "LLM-driven personal reading tracker. Add, update, query, and search reading items via natural language.",
+  "author": {
+    "name": "brfid"
+  },
+  "repository": "https://github.com/brfid/reading-tracker",
+  "license": "MIT"
+}
