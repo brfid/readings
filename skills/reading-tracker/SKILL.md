@@ -171,11 +171,12 @@ gh api -X PUT /repos/{REPO}/contents/reading.yaml \
 
 The `content` field must be the full modified YAML, base64-encoded.
 
-Commit messages follow these patterns:
-- `Add: {label or url}`
-- `Started: {label or url}`
-- `Finished: {label or url}`
-- `Update notes: {label or url}`
+Commit messages must be minimal — just the operation and identifier:
+- `add {label or url}`
+- `started {label or url}`
+- `finished {label or url}`
+- `note {label or url}`
+- `context {label or url}` (for folder file creates/updates)
 
 **Step 4 — Create or update folder** (for Add, Discuss, and substantive interactions).
 
@@ -188,7 +189,7 @@ Each PUT to a new file omits the `sha` field (file doesn't exist yet):
 
 ```bash
 gh api -X PUT /repos/{REPO}/contents/texts/{folder-name}/CLAUDE.md \
-  -f message="Add context: {label or url}" \
+  -f message="context {label or url}" \
   -f content="BASE64_ENCODED_CONTENT"
 ```
 
