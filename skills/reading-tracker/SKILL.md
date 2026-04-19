@@ -109,11 +109,17 @@ Read `references/folder-agent-template.md` for the CLAUDE.md template, conversat
 
 ### When to create a folder
 
-Create the folder on **Add**. Every new item gets a folder with a generated CLAUDE.md and empty conversations.md.
+Create the folder on **Add**. Every new item gets a folder with identity-only CLAUDE.md (title, status, URL) and empty conversations.md. No empty sections.
 
 ### When to update the folder
 
-After any **substantive interaction** about an item (discussion, notes update, status change with context), append a summary to `conversations.md` and update the `CLAUDE.md` Reading Context section. Do not update for trivial status changes with no discussion.
+After any **substantive interaction** about an item (discussion, notes update, status change with context):
+
+1. **conversations.md** — append an entry with structured fields: what was discussed, key points, where we left off, open threads. This is the primary resumability mechanism. Include enough specifics that a new session can pick up cold.
+
+2. **CLAUDE.md** — add or update sections from the available set (see `references/folder-agent-template.md`). Only add a section when there is real content for it. Never write empty sections.
+
+Do not update for trivial status changes with no discussion.
 
 ## Executing Operations
 
