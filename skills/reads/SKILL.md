@@ -177,15 +177,16 @@ Fetch text content from item URL, convert to markdown, commit as `content.md` in
 1. Match item in reading.yaml
 2. Verify item has `url` — if not, tell user save requires URL
 3. Check if `texts/{folder}/content.md` exists (GET) — if exists, save `sha` from response, ask update or skip
-4. Fetch URL via WebFetch
-5. Extract article body → clean markdown (headings, paragraphs, lists, links, emphasis). Skip nav, ads, sidebars, footers. Preserve author attribution + publication date if visible
-6. Prepend source header:
+4. Fetch URL content and convert to markdown
+5. Prepend source header:
    ```
    Source: {url}
    Saved: {YYYY-MM-DD}
    ```
-7. PUT `content.md` via GitHub API (new file omit sha, existing file include sha)
-8. Commit: `save {label or url}`
+6. PUT `content.md` via GitHub API (new file omit sha, existing file include sha)
+7. Commit: `save {label or url}`
+
+**Markdown quality:** CommonMark / GFM. Preserve heading hierarchy, links, emphasis, lists, code blocks, tables, blockquotes, footnotes. Strip nav, ads, sidebars, footers, newsletter prompts. Preserve author attribution + publication date if visible. No script-based HTML→markdown conversion — read the page and write clean markdown directly.
 
 Scope: text-based web content (articles, essays, guides, blog posts). Non-text (video, podcast) → tell user. Fetch failure → surface error, suggest checking URL. Paywall/login page → detect and report.
 
