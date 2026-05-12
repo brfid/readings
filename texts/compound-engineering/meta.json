@@ -1,0 +1,15 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "name": "Compound Engineering",
+  "url": "https://every.to/guides/compound-engineering",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Every"
+  },
+  "keywords": "ai, engineering, agents",
+  "potentialAction": {
+    "@type": "ReadAction",
+    "actionStatus": "PotentialActionStatus"
+  }
+}

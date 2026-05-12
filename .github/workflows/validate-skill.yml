@@ -1,0 +1,59 @@
+name: validate-skill
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/**"
+      - ".github/workflows/validate-skill.yml"
+  pull_request:
+    paths:
+      - "skills/**"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # skills-ref is the agentskills.io reference validator
+      # https://github.com/agentskills/agentskills
+      - name: Install skills-ref
+        run: npm install -g @agentskills/skills-ref || echo "skills-ref not yet on npm; falling back to YAML lint"
+
+      - name: Validate frontmatter
+        run: |
+          python3 - <<'PY'
+          import sys, re, yaml, pathlib
+          fail = 0
+          for skill in pathlib.Path("skills").glob("*/SKILL.md"):
+              text = skill.read_text(encoding="utf-8")
+              m = re.match(r"^---\n(.*?)\n---", text, re.S)
+              if not m:
+                  print(f"FAIL {skill}: missing frontmatter"); fail += 1; continue
+              try:
+                  fm = yaml.safe_load(m.group(1)) or {}
+              except yaml.YAMLError as e:
+                  print(f"FAIL {skill}: bad YAML: {e}"); fail += 1; continue
+              name = fm.get("name", "")
+              desc = fm.get("description", "")
+              if not (1 <= len(name) <= 64) or not re.fullmatch(r"[a-z0-9-]+", name):
+                  print(f"FAIL {skill}: invalid name {name!r}"); fail += 1
+              if not (1 <= len(desc) <= 1024):
+                  print(f"FAIL {skill}: invalid description length"); fail += 1
+              print(f"OK   {skill}: name={name}")
+          sys.exit(1 if fail else 0)
+          PY
+
+      - name: Run skills-ref if available
+        run: |
+          if command -v skills-ref >/dev/null 2>&1; then
+            skills-ref validate skills/
+          else
+            echo "skills-ref not installed; skipped"
+          fi
