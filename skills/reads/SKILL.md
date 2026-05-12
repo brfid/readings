@@ -1,7 +1,11 @@
 ---
 name: reads
-description: "Track reading via natural language. Add items, change status, query, search, discuss."
-argument-hint: "[add, start, finish, query, search, notes, discuss, save, or anything about a tracked item]"
+description: "Track reading via natural language. Add items, change status, query, search, discuss, capture facts, replay history."
+license: MIT
+compatibility:
+  claude-code: ">=0"
+metadata:
+  argument-hint: "[add, start, finish, query, search, notes, fact, discuss, save, history, or anything about a tracked item]"
 ---
 
 # Reads
@@ -57,8 +61,10 @@ Determine operation from natural language:
 | **Query** | "what am I reading?", "show backlog" | Filter + display |
 | **Search** | "what about distributed systems?" | Search labels, URLs, notes, conversations |
 | **Notes** | "note on DDIA: chapter 5 great" | Append to notes field |
+| **Fact** | "author is Kleppmann", "isbn 978-...", "rating 4/5", "type: paper" | Update `meta.yaml` field |
 | **Discuss** | "discuss DDIA", "continue DDIA" | Load folder context + converse |
 | **Save** | "save compound engineering", "download DDIA", "capture article", "make a copy" | Fetch URL content → write `content.md` |
+| **History** | "when did I finish DDIA?", "what did I read in March?", "show timeline" | Query git log via `gh api /repos/{REPO}/commits` |
 | **General** | anything else about a tracked item | Use tools + judgment to fulfill the request |
 
 Unclear intent with no identifiable item → ask. Don't guess.
@@ -113,6 +119,32 @@ Field rules:
 No date fields. Git history = timeline.
 
 **YAML string safety:** Double-quote values containing `: { } [ ] , & * # ? | - < > = ! % @ \`. When in doubt, quote.
+
+## Per-Item Facts (`meta.yaml`)
+
+Each item folder has a loose-schema `meta.yaml` for structured facts. The skill writes this; CI compiles it (with status from `reading.yaml`) into `meta.json` (Schema.org JSON-LD). Don't write `meta.json` by hand.
+
+```yaml
+title: "Designing Data-Intensive Applications"
+type: book              # book | article | paper | post
+url: "https://dataintensive.net"
+author: "Martin Kleppmann"
+publisher: "O'Reilly Media"
+published: "2017"       # year or full date string; preserve as-is
+isbn: "978-1449373320"
+doi: "10.1234/abcd"     # papers
+rating: 4               # optional, 1–5 integer
+tags: [distributed-systems, databases]
+```
+
+Field rules:
+- All fields optional. Omit unknowns.
+- `type` — pick the closest of `book` / `article` / `paper` / `post`. Maps to Schema.org: book → `Book`, article → `Article`, paper → `ScholarlyArticle`, post → `BlogPosting`.
+- `author` — string for one author, or list for multiple: `[Foo, Bar]`.
+- `tags` — list of short strings, lowercase-hyphenated.
+- Anything not on the list above: drop into `extra:` map. CI passes through to JSON-LD as best-effort `additionalProperty`.
+
+Don't pre-fill from web on Add unless user asks. The skill captures facts as they're stated. When user asks "look up the isbn", fetch and write.
 
 ## Folder as Agent
 
@@ -194,7 +226,26 @@ Scope: text-based web content (articles, essays, guides, blog posts). Non-text (
 
 For requests that don't match a predefined intent: use available tools and judgment. Read files, fetch URLs, run commands, write locally — whatever fulfills the request. Match the item first if one is referenced, then operate on its data.
 
-### Write Operations (Add, Start, Finish, Notes)
+### History
+
+Read-only. Use git history (commit log) as the timeline.
+
+```bash
+# All commits touching one item
+gh api "/repos/{REPO}/commits?path=texts/{folder}&per_page=100"
+
+# All status changes (reading.yaml mutations)
+gh api "/repos/{REPO}/commits?path=reading.yaml&per_page=100"
+
+# Within a window
+gh api "/repos/{REPO}/commits?path=reading.yaml&since=2026-01-01T00:00:00Z&until=2026-04-01T00:00:00Z"
+```
+
+Each commit returns `commit.author.date` (ISO 8601) and `commit.message`. Map messages back to operations using the prefix conventions below (`add`, `started`, `finished`, `note`, `fact`, `discuss`, `save`). Present a clean timeline; never raw JSON.
+
+For "when did I X?" — find first commit whose message matches `{op} {label}` on the relevant path. For "what did I read in March?" — list `finished ...` commits in window.
+
+### Write Operations (Add, Start, Finish, Notes, Fact)
 
 Every write follows this cycle:
 
@@ -210,6 +261,14 @@ Every write follows this cycle:
 - Set `path` to `texts/{folder-name}`
 - Append to items list
 - Default status: `want-to-read`
+- Folder gets a starter `meta.yaml` with whatever facts are knowable from the request (`title`, `url`, possibly `type`). Skip unknown fields.
+
+**Fact:**
+- Match item
+- GET `texts/{folder}/meta.yaml` (404 → start from `{}` template)
+- Set/replace single field. Lists (`tags`, multi-author): default **append unique**; replace only on explicit "set tags to", "replace authors"
+- Unknown field name → drop into `extra:` map; tell user where it landed
+- Commit: `fact {label or url}: {field}`
 
 **Start/Finish:**
 - Match reference against labels, URLs, notes
@@ -222,10 +281,12 @@ Every write follows this cycle:
 - Default: **append** with newline separator
 - **Replace** only on explicit "replace", "set notes to", "clear and add"
 
-**Step 3 — Write reading.yaml.**
+**Step 3 — Write the target file.**
+
+For Add / Start / Finish / Notes the target is `reading.yaml`. For Fact the target is `texts/{folder}/meta.yaml`. Same PUT shape:
 
 ```bash
-gh api -X PUT /repos/{REPO}/contents/reading.yaml \
+gh api -X PUT /repos/{REPO}/contents/{TARGET_PATH} \
   -f message="COMMIT_MESSAGE" \
   -f content="BASE64_ENCODED_YAML" \
   -f sha="SHA_FROM_GET"
@@ -238,6 +299,7 @@ Commit messages — minimal, operation + identifier:
 - `started {label or url}`
 - `finished {label or url}`
 - `note {label or url}`
+- `fact {label or url}: {field}` — meta.yaml updates
 - `init {label or url}` — folder creation
 - `discuss {label or url}` — folder updates after discussion
 - `context {label or url}` — other folder updates
@@ -245,10 +307,11 @@ Commit messages — minimal, operation + identifier:
 
 **Step 4 — Create/update folder** (Add, Discuss, substantive interactions).
 
-**Add** — two PUT calls:
+**Add** — three PUT calls:
 
 1. `texts/{folder-name}/CLAUDE.md` — from template
 2. `texts/{folder-name}/conversations.md` — empty file
+3. `texts/{folder-name}/meta.yaml` — starter facts (title/url/type if known); `{}` if nothing known
 
 New file PUTs omit `sha`:
 
