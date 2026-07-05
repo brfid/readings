@@ -4,3 +4,13 @@ pending:
   label: Continuous Integration (Fowler, 2006)
   note: from e2e readings — practitioner canon
   url: https://martinfowler.com/articles/continuousIntegration.html
+- added: '2026-07-05'
+  from: bede
+  label: Continuous Delivery (Fowler, 2013)
+  note: from e2e readings — practitioner canon
+  url: https://martinfowler.com/bliki/ContinuousDelivery.html
+- added: '2026-07-05'
+  from: bede
+  label: Deployment Pipeline (Fowler)
+  note: from e2e readings — practitioner canon
+  url: https://martinfowler.com/bliki/DeploymentPipeline.html
