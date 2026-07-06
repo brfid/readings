@@ -1,27 +1,32 @@
 items:
-- label: Compound Engineering
+- title: Compound Engineering
+  location: https://every.to/guides/compound-engineering
   path: texts/compound-engineering
   status: done
-  url: https://every.to/guides/compound-engineering
-- label: Continuous Integration (Fowler, 2006)
+- title: Continuous Integration
+  authors:
+  - Fowler
+  location: https://martinfowler.com/articles/continuousIntegration.html
   path: texts/continuous-integration
   status: reading
-  url: https://martinfowler.com/articles/continuousIntegration.html
-- label: Continuous Delivery (Fowler, 2013)
+- title: Continuous Delivery
+  authors:
+  - Fowler
+  location: https://martinfowler.com/bliki/ContinuousDelivery.html
   path: texts/continuous-delivery
   status: want-to-read
-  url: https://martinfowler.com/bliki/ContinuousDelivery.html
-- label: Deployment Pipeline (Fowler)
+- title: Deployment Pipeline
+  authors:
+  - Fowler
+  location: https://martinfowler.com/bliki/DeploymentPipeline.html
   path: texts/deployment-pipeline
   status: want-to-read
-  url: https://martinfowler.com/bliki/DeploymentPipeline.html
-- label: Always Coming Home
+- title: Always Coming Home
+  location: Books app
   path: texts/always-coming-home
   status: reading
-  url: Books app
-- label: Arctic Dreams
+- title: Arctic Dreams
+  location: Books app
   path: texts/arctic-dreams
   status: want-to-read
-  url: Books app
 version: 1
-
