@@ -15,4 +15,12 @@ items:
   path: texts/deployment-pipeline
   status: want-to-read
   url: https://martinfowler.com/bliki/DeploymentPipeline.html
+- label: Always Coming Home
+  path: texts/always-coming-home
+  status: reading
+  url: Books app
+- label: Arctic Dreams
+  path: texts/arctic-dreams
+  status: want-to-read
+  url: Books app
 version: 1
