@@ -1,344 +1,100 @@
 ---
 name: reads
-description: "Track reading via natural language. Add items, change status, query, search, discuss, capture facts, replay history."
+description: "Use when tracking reading via the brfid/reads GitHub repo — add items, update status, query, search, discuss, capture facts, save content, or drain the cross-profile queue."
+version: 3.0.0
+author: Brad Fidler
 license: MIT
-compatibility:
-  claude-code: ">=0"
 metadata:
-  argument-hint: "[add, start, finish, query, search, notes, fact, discuss, save, history, or anything about a tracked item]"
+  hermes:
+    tags: [reading, tracking, github, yaml, books, articles]
+    related_skills: [github-repo-management]
 ---
 
 # Reads
 
-Personal reading list as YAML in a GitHub repo. Each item gets a folder in `texts/` — standalone agent context with CLAUDE.md, conversation history, optional reading material. Folder is the agent: same model, different folder, different specialist.
+Personal reading tracker: `brfid/reads` on GitHub, cloned locally at
+`~/.hermes/profiles/bede/workspace/reads`. All operations go through
+`reads.py` — a stdlib-only CLI that handles YAML loading, validation,
+git commit/push, and README regeneration.
 
-## Configuration
+## When to Use
 
-Resolve target repo — check in order:
+Add, start, finish, note, search, query, discuss, or save reading items.
+Drain the cross-profile queue. Query reading history via git log.
 
-1. Environment variable `READS_REPO` (check via Bash: `echo $READS_REPO`)
-2. Config file `~/.config/reads/config.yaml` (read with Read tool, extract `repo:` value)
+**Do NOT use for:** general web research, literature reviews, note-taking outside the tracker.
 
-Use the first non-empty value found. Validate format: `owner/repo` (e.g., `brfid/reads`).
+## Pre-Flight
 
-If invalid format, stop. Tell user:
+1. `cd ~/.hermes/profiles/bede/workspace/reads && git pull --rebase`
+2. Check queue: `python3 reads.py queue-drain` (if items pending, ask user first)
+3. Run the command (see table below)
+4. If `reads.py` reports ambiguous match, show candidates and ask user to disambiguate
 
-> Invalid repo format. Expected `owner/repo` (e.g., `brfid/reads`). Check config for typos.
+## Architecture (v3 — July 2026)
 
-If no value found, stop. Tell user:
+- **`reading.yaml`** — single source of truth. All metadata in one file (v2 schema). No per-item meta.yaml.
+- **`texts/{folder}/`** — CLAUDE.md (agent context), conversations.md (discussion log), content.md (saved content), meta.json (CI-generated, don't edit).
+- **`queue.yaml`** — cross-profile inbox. Other agents append via `reads.py queue-add`.
+- **`reads.py`** — CLI that replaces all bash templates. Validates schema on every write.
+- **CI** — `reads.py validate` + `compile_meta.py` on push.
 
-> No repo configured. Set one:
->
-> **Option A (recommended):** Shell profile:
-> ```
-> export READS_REPO=owner/repo
-> ```
->
-> **Option B:** Create `~/.config/reads/config.yaml`:
-> ```yaml
-> repo: owner/repo
-> ```
->
-> Restart Claude Code.
-
-Stop here if not configured. No API calls.
-
-## User Request
-
-<user_request> #$ARGUMENTS </user_request>
-
-If empty, ask: "What do you want to do with your reads?"
-
-## Intent Classification
-
-Determine operation from natural language:
-
-| Intent | Triggers | Operation |
-|--------|----------|-----------|
-| **Add** | "add DDIA", "track https://..." | Append item + create folder |
-| **Start** | "started DDIA", "reading now" | Status → `reading` |
-| **Finish** | "finished DDIA", "done with DDIA" | Status → `done` |
-| **Query** | "what am I reading?", "show backlog" | Filter + display |
-| **Search** | "what about distributed systems?" | Search labels, URLs, notes, conversations |
-| **Notes** | "note on DDIA: chapter 5 great" | Append to notes field |
-| **Fact** | "author is Kleppmann", "isbn 978-...", "rating 4/5", "type: paper" | Update `meta.yaml` field |
-| **Discuss** | "discuss DDIA", "continue DDIA" | Load folder context + converse |
-| **Save** | "save compound engineering", "download DDIA", "capture article", "make a copy" | Fetch URL content → write `content.md` |
-| **History** | "when did I finish DDIA?", "what did I read in March?", "show timeline" | Query git log via `gh api /repos/{REPO}/commits` |
-| **General** | anything else about a tracked item | Use tools + judgment to fulfill the request |
-
-Unclear intent with no identifiable item → ask. Don't guess.
-
-**General intent:** When user request doesn't fit a predefined intent but relates to a tracked item or the reading system, use available tools (Bash, WebFetch, Read, Write, gh API) and judgment to fulfill it. Examples: "download a local copy", "summarize what I've read", "compare two items", "show me the folder". Don't reject requests just because they lack a named intent.
-
-## Reading Current State
-
-Fetch reading list:
-
-```bash
-gh api /repos/{REPO}/contents/reading.yaml
-```
-
-`{REPO}` = configured repo value.
-
-**404** → file doesn't exist. Create with PUT (no `sha`):
-```yaml
-version: 1
-items: []
-```
-Then proceed with operation.
-
-**Success** → from response JSON:
-- Decode `content` (base64) → YAML text
-- Parse YAML → items list
-- Save `sha` — required for writes
-
-Branch: always `main`.
-
-## YAML Schema
+## YAML Schema (v2)
 
 ```yaml
-version: 1
+version: 2
 items:
-  - label: "DDIA"
-    url: "https://dataintensive.net"
-    path: "texts/ddia"
-    status: reading
-    notes: "Chapter 5 is great"
-  - url: "https://example.com/article"
-    path: "texts/some-article"
-    status: want-to-read
+  - title: "DDIA"
+    authors: [Martin Kleppmann]    # optional list
+    type: book                     # book | article | paper | post
+    location: "https://..."        # URL or "Books app"
+    path: texts/ddia               # required, must start with texts/
+    status: reading                # want-to-read | reading | done | abandoned
+    publisher: "O'Reilly"          # optional
+    published: "2017"               # optional, string
+    isbn: "978-..."                 # optional
+    rating: 4                       # optional, 1-5
+    notes: []                       # optional list of strings
 ```
 
-Field rules:
-- `url` or `path` — at least one required
-- `label` — optional. Store when provided, omit when not
-- `status` — `want-to-read` | `reading` | `done`. Default `want-to-read`. Normalize synonyms: `in-progress`/`currently-reading` → `reading`, `completed`/`finished` → `done`, `backlog`/`queued`/`tbr` → `want-to-read`
-- `notes` — optional freeform string
+No date fields. Git history = timeline. CI extracts dates from commits.
 
-No date fields. Git history = timeline.
+## Intent → Command
 
-**YAML string safety:** Double-quote values containing `: { } [ ] , & * # ? | - < > = ! % @ \`. When in doubt, quote.
+| Intent | Trigger examples | Command |
+|--------|-----------------|----------|
+| **Add** | "add DDIA", "track https://..." | `python3 reads.py add --title "T" --author "A" --type book --location "URL"` |
+| **Start** | "started DDIA", "reading now" | `python3 reads.py start "ref"` |
+| **Finish** | "finished DDIA", "done with DDIA" | `python3 reads.py finish "ref" --rating 5` |
+| **Note** | "note on DDIA: chapter 5 great" | `python3 reads.py note "ref" "text"` |
+| **Fact** | "author is Kleppmann", "isbn 978-..." | `python3 reads.py fact "ref" field value` |
+| **Discuss** | "discuss DDIA", "continue DDIA" | `python3 reads.py discuss "ref" "text" --topic "slug"` |
+| **Save** | "save compound engineering" | `python3 reads.py save "ref"` |
+| **Query** | "what am I reading?", "show backlog" | `python3 reads.py query --status reading` |
+| **Search** | "what about distributed systems?" | `python3 reads.py search "keyword"` |
+| **History** | "when did I finish DDIA?" | `python3 reads.py history "ref"` |
+| **README** | "update readme" | `python3 reads.py readme` |
+| **Queue Add** | (from other profiles) | `python3 reads.py queue-add --location "URL" --title "T" --from jinny` |
+| **Queue Drain** | "process queue" | `python3 reads.py queue-drain` |
+| **Validate** | (CI only) | `python3 reads.py validate` |
 
-## Per-Item Facts (`meta.yaml`)
-
-Each item folder has a loose-schema `meta.yaml` for structured facts. The skill writes this; CI compiles it (with status from `reading.yaml`) into `meta.json` (Schema.org JSON-LD). Don't write `meta.json` by hand.
-
-```yaml
-title: "Designing Data-Intensive Applications"
-type: book              # book | article | paper | post
-url: "https://dataintensive.net"
-author: "Martin Kleppmann"
-publisher: "O'Reilly Media"
-published: "2017"       # year or full date string; preserve as-is
-isbn: "978-1449373320"
-doi: "10.1234/abcd"     # papers
-rating: 4               # optional, 1–5 integer
-tags: [distributed-systems, databases]
-```
-
-Field rules:
-- All fields optional. Omit unknowns.
-- `type` — pick the closest of `book` / `article` / `paper` / `post`. Maps to Schema.org: book → `Book`, article → `Article`, paper → `ScholarlyArticle`, post → `BlogPosting`.
-- `author` — string for one author, or list for multiple: `[Foo, Bar]`.
-- `tags` — list of short strings, lowercase-hyphenated.
-- Anything not on the list above: drop into `extra:` map. CI passes through to JSON-LD as best-effort `additionalProperty`.
-
-Don't pre-fill from web on Add unless user asks. The skill captures facts as they're stated. When user asks "look up the isbn", fetch and write.
-
-## Folder as Agent
-
-Each item gets folder in `texts/` — self-contained agent context. Model enters folder, becomes specialist.
-
-`reading.yaml` = source of truth for status. `Status:` in folder CLAUDE.md is derived — update to match on write, but on conflict `reading.yaml` wins.
-
-Structure:
-
-```
-texts/ddia/
-  CLAUDE.md           # agent identity — auto-loads in directory
-  conversations.md    # discussion themes
-  content.md          # reading material (saved by skill or manual)
-```
-
-See `references/folder-agent-template.md` for templates and naming rules.
-
-### Folder Creation
-
-Create on **Add**. Every new item gets identity-only CLAUDE.md (title, status, URL) + empty conversations.md. No empty sections.
-
-### Folder Updates
-
-Update when interaction produces resumable content:
-
-- **Discuss** — always update both files
-- **Notes** with context/commentary — update conversations.md
-- **Start/Finish** with reasoning/reflection — update conversations.md
-
-Bare status changes (`started X`, `finished X`) with no discussion → no folder update.
-
-1. **conversations.md** — append entry: what discussed, key points, where left off, open threads. Primary resumability mechanism. Enough specifics for cold-start pickup.
-
-2. **CLAUDE.md** — add/update sections from available set (see template). Only add sections with real content. Never empty sections.
-
-## Executing Operations
-
-### Read-Only (Query, Search)
-
-Read YAML, answer directly. No write.
-
-- **Query:** Filter by `status`, display matches
-- **Search:** Match terms against `label`, `url`, `notes`, and folder `conversations.md`. 404 on conversations.md → skip, search YAML fields only. Use judgment for fuzzy/semantic matching
-
-### Discuss
-
-Load folder context, resume conversation:
-
-1. Match item in reading.yaml
-2. Fetch `texts/{folder}/CLAUDE.md`, `texts/{folder}/conversations.md`, `texts/{folder}/content.md` via API
-3. Present reading context, themes, open questions. If content.md exists, use as grounded material
-4. Converse — folder context provides continuity
-5. After discussion, append summary to `conversations.md`, update `CLAUDE.md`
-
-Missing content.md → skip silently.
-
-### Save
-
-Fetch text content from item URL, convert to markdown, commit as `content.md` in item folder.
-
-1. Match item in reading.yaml
-2. Verify item has `url` — if not, tell user save requires URL
-3. Check if `texts/{folder}/content.md` exists (GET) — if exists, save `sha` from response, ask update or skip
-4. Fetch URL content and convert to markdown
-5. Prepend source header:
-   ```
-   Source: {url}
-   Saved: {YYYY-MM-DD}
-   ```
-6. PUT `content.md` via GitHub API (new file omit sha, existing file include sha)
-7. Commit: `save {label or url}`
-
-**Markdown quality:** CommonMark / GFM. Preserve heading hierarchy, links, emphasis, lists, code blocks, tables, blockquotes, footnotes. Strip nav, ads, sidebars, footers, newsletter prompts. Preserve author attribution + publication date if visible. No script-based HTML→markdown conversion — read the page and write clean markdown directly.
-
-Scope: text-based web content (articles, essays, guides, blog posts). Non-text (video, podcast) → tell user. Fetch failure → surface error, suggest checking URL. Paywall/login page → detect and report.
-
-### General
-
-For requests that don't match a predefined intent: use available tools and judgment. Read files, fetch URLs, run commands, write locally — whatever fulfills the request. Match the item first if one is referenced, then operate on its data.
-
-### History
-
-Read-only. Use git history (commit log) as the timeline.
-
-```bash
-# All commits touching one item
-gh api "/repos/{REPO}/commits?path=texts/{folder}&per_page=100"
-
-# All status changes (reading.yaml mutations)
-gh api "/repos/{REPO}/commits?path=reading.yaml&per_page=100"
-
-# Within a window
-gh api "/repos/{REPO}/commits?path=reading.yaml&since=2026-01-01T00:00:00Z&until=2026-04-01T00:00:00Z"
-```
-
-Each commit returns `commit.author.date` (ISO 8601) and `commit.message`. Map messages back to operations using the prefix conventions below (`add`, `started`, `finished`, `note`, `fact`, `discuss`, `save`). Present a clean timeline; never raw JSON.
-
-For "when did I X?" — find first commit whose message matches `{op} {label}` on the relevant path. For "what did I read in March?" — list `finished ...` commits in window.
-
-### Write Operations (Add, Start, Finish, Notes, Fact)
-
-Every write follows this cycle:
-
-**Step 1 — Read current state.** Extract `sha`.
-
-**Step 2 — Modify in memory.**
-
-**Add:**
-- Check duplicate URL → ask update or skip
-- Derive folder name (see `references/folder-agent-template.md`)
-- Check `path` collision → append suffix (`-2`, `-3`)
-- Build item with provided fields only. Don't prompt for missing optionals
-- Set `path` to `texts/{folder-name}`
-- Append to items list
-- Default status: `want-to-read`
-- Folder gets a starter `meta.yaml` with whatever facts are knowable from the request (`title`, `url`, possibly `type`). Skip unknown fields.
-
-**Fact:**
-- Match item
-- GET `texts/{folder}/meta.yaml` (404 → start from `{}` template)
-- Set/replace single field. Lists (`tags`, multi-author): default **append unique**; replace only on explicit "set tags to", "replace authors"
-- Unknown field name → drop into `extra:` map; tell user where it landed
-- Commit: `fact {label or url}: {field}`
-
-**Start/Finish:**
-- Match reference against labels, URLs, notes
-- One match → update status (`reading` / `done`)
-- Multiple → ask to disambiguate
-- None → ask if they want to add
-
-**Notes:**
-- Match item
-- Default: **append** with newline separator
-- **Replace** only on explicit "replace", "set notes to", "clear and add"
-
-**Step 3 — Write the target file.**
-
-For Add / Start / Finish / Notes the target is `reading.yaml`. For Fact the target is `texts/{folder}/meta.yaml`. Same PUT shape:
-
-```bash
-gh api -X PUT /repos/{REPO}/contents/{TARGET_PATH} \
-  -f message="COMMIT_MESSAGE" \
-  -f content="BASE64_ENCODED_YAML" \
-  -f sha="SHA_FROM_GET"
-```
-
-`content` = full modified YAML, base64-encoded.
-
-Commit messages — minimal, operation + identifier:
-- `add {label or url}`
-- `started {label or url}`
-- `finished {label or url}`
-- `note {label or url}`
-- `fact {label or url}: {field}` — meta.yaml updates
-- `init {label or url}` — folder creation
-- `discuss {label or url}` — folder updates after discussion
-- `context {label or url}` — other folder updates
-- `save {label or url}` — content.md creation
-
-**Step 4 — Create/update folder** (Add, Discuss, substantive interactions).
-
-**Add** — three PUT calls:
-
-1. `texts/{folder-name}/CLAUDE.md` — from template
-2. `texts/{folder-name}/conversations.md` — empty file
-3. `texts/{folder-name}/meta.yaml` — starter facts (title/url/type if known); `{}` if nothing known
-
-New file PUTs omit `sha`:
-
-```bash
-gh api -X PUT /repos/{REPO}/contents/texts/{folder-name}/CLAUDE.md \
-  -f message="context {label or url}" \
-  -f content="BASE64_ENCODED_CONTENT"
-```
-
-Existing folder file updates → GET for `sha` first, then PUT with modified content + `sha`.
-
-**Step 5 — Handle response.**
-- Success → confirm
-- 409 on reading.yaml → re-GET, re-apply, retry (up to 2)
-- 409 on folder file → file exists, GET sha, PUT as update
-- 422 → surface error
-- 5xx → surface error, suggest retry
+`<ref>` is a title, path, or fuzzy search string. If ambiguous, reads.py lists candidates and exits 1.
 
 ## Matching Items
 
-Match reference against `label`, `url`, `path`, `notes`. Priority:
+`reads.py resolve()` matches: exact path → exact title (case-insensitive) → fuzzy substring. If multiple matches, it prints candidates and exits — show them to the user and ask.
 
-1. **Exact** on label or URL → proceed
-2. **Substring/abbreviation** — "DDIA" matches "Designing Data-Intensive Applications", "raft" matches `texts/raft-paper`
-3. **Semantic** — "that distributed systems book" matches DDIA if only item on topic
+## Folder Naming
 
-Resolution:
-- Single confident match → proceed
-- Multiple plausible → ask user, show labels + URLs
-- No match → ask if they want to add
+Derived from title: lowercase, hyphens, strip leading articles (a/an/the), max 40 chars. Collisions get `-2`, `-3` suffixes.
+
+## Reference Files
+
+- `references/e2e-pipeline-readings.md` — Brad's canonical pipeline/CI/CD reading list. Load when user references "e2e readings" or asks about pipeline reading backlog.
+
+## Notes
+
+- All git operations use SSH (`git@github.com:brfid/reads.git`) — the HTTPS OAuth token lacks `workflow` scope.
+- `reads.py` handles folder file creation (CLAUDE.md, conversations.md) automatically on `add`.
+- `notes` is a list of strings — each note is its own entry.
+- `authors` is comma-separated on the CLI: `--author "A" --author "B"` or `fact authors "A, B"`.
