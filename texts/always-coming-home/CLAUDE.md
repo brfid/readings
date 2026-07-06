@@ -1,5 +1,4 @@
 # Always Coming Home
 
 **Status:** reading
-**URL:** Books app
-
+**Location:** Books app
