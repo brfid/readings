@@ -1,8 +1,10 @@
 items:
 - title: Compound Engineering
+  type: article
   location: https://every.to/guides/compound-engineering
   path: texts/compound-engineering
   status: done
+  publisher: Every
 - title: Continuous Integration
   authors:
   - Fowler
@@ -22,11 +24,26 @@ items:
   path: texts/deployment-pipeline
   status: want-to-read
 - title: Always Coming Home
+  authors:
+  - Ursula K. Le Guin
+  type: book
   location: Books app
   path: texts/always-coming-home
   status: reading
+  published: '1985'
 - title: Arctic Dreams
+  authors:
+  - Barry Lopez
+  type: book
   location: Books app
   path: texts/arctic-dreams
   status: want-to-read
-version: 1
+  published: '1986'
+- title: Test Book
+  path: texts/test-book
+  status: want-to-read
+  authors:
+  - Test Author
+  type: book
+  location: https://example.com
+version: 2
