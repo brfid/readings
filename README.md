@@ -10,6 +10,6 @@
 
 ## Backlog (3)
 
-- [https://every.to/guides/compound-engineering](texts/compound-engineering/)
+- [Compound Engineering](texts/compound-engineering/)
 - [Continuous Delivery (Fowler, 2013)](texts/continuous-delivery/)
 - [Deployment Pipeline (Fowler)](texts/deployment-pipeline/)
