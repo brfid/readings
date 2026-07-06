@@ -10,6 +10,6 @@
   "keywords": "ai, engineering, agents",
   "potentialAction": {
     "@type": "ReadAction",
-    "actionStatus": "PotentialActionStatus"
+    "actionStatus": "CompletedActionStatus"
   }
 }

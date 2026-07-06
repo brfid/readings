@@ -1,0 +1,14 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Book",
+  "name": "Arctic Dreams: Imagination and Desire in a Northern Landscape",
+  "author": {
+    "@type": "Person",
+    "name": "Barry Lopez"
+  },
+  "datePublished": "1986",
+  "potentialAction": {
+    "@type": "ReadAction",
+    "actionStatus": "PotentialActionStatus"
+  }
+}
