@@ -1,6 +1,14 @@
 {
   "@context": "https://schema.org",
   "@type": "CreativeWork",
+  "name": "Continuous Delivery",
+  "url": "https://martinfowler.com/bliki/ContinuousDelivery.html",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Fowler"
+    }
+  ],
   "potentialAction": {
     "@type": "ReadAction",
     "actionStatus": "PotentialActionStatus"

@@ -39,11 +39,4 @@ items:
   path: texts/arctic-dreams
   status: want-to-read
   published: '1986'
-- title: Test Book
-  path: texts/test-book
-  status: want-to-read
-  authors:
-  - Test Author
-  type: book
-  location: https://example.com
 version: 2

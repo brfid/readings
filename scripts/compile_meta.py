@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
-"""Compile per-item meta.yaml + reading.yaml status into Schema.org JSON-LD.
+"""Compile reading.yaml items into per-item Schema.org JSON-LD (meta.json).
 
-Reads:
-  reading.yaml          (root)              — list of items with status
-  texts/<slug>/meta.yaml                    — per-item facts
-
-Writes:
-  texts/<slug>/meta.json                    — Schema.org JSON-LD snapshot
+Reads the single reading.yaml (v2 — all metadata in one file).
+Writes texts/<slug>/meta.json per item.
 
 Run from repo root with no args. Idempotent. Safe to commit results.
 """
@@ -17,12 +13,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-try:
-    import yaml
-except ImportError:
-    sys.stderr.write("Need PyYAML. pip install pyyaml\n")
-    sys.exit(1)
-
+import yaml
 
 SCHEMA_TYPE = {
     "book": "Book",
@@ -35,11 +26,7 @@ ACTION_STATUS = {
     "want-to-read": "PotentialActionStatus",
     "reading": "ActiveActionStatus",
     "done": "CompletedActionStatus",
-}
-
-CORE_FIELDS = {
-    "title", "type", "url", "author", "publisher", "published",
-    "isbn", "doi", "rating", "tags", "extra",
+    "abandoned": "FailedActionStatus",
 }
 
 
@@ -51,32 +38,32 @@ def author_node(author: Any) -> Any:
     return {"@type": "Person", "name": str(author)}
 
 
-def build_jsonld(meta: dict, status: str | None) -> dict:
-    schema_type = SCHEMA_TYPE.get(meta.get("type", "").lower(), "CreativeWork")
-    doc: dict = {
-        "@context": "https://schema.org",
-        "@type": schema_type,
-    }
+def build_jsonld(item: dict) -> dict:
+    schema_type = SCHEMA_TYPE.get(
+        (item.get("type") or "").lower(), "CreativeWork"
+    )
+    doc: dict = {"@context": "https://schema.org", "@type": schema_type}
 
-    if title := meta.get("title"):
+    if title := item.get("title"):
         doc["name"] = str(title)
-    if url := meta.get("url"):
-        doc["url"] = str(url)
-    if a := author_node(meta.get("author")):
+    if location := item.get("location"):
+        if str(location).startswith("http"):
+            doc["url"] = str(location)
+    if a := author_node(item.get("authors")):
         doc["author"] = a
-    if pub := meta.get("publisher"):
+    if pub := item.get("publisher"):
         doc["publisher"] = {"@type": "Organization", "name": str(pub)}
-    if pd := meta.get("published"):
+    if pd := item.get("published"):
         doc["datePublished"] = str(pd)
-    if isbn := meta.get("isbn"):
+    if isbn := item.get("isbn"):
         doc["isbn"] = str(isbn)
-    if doi := meta.get("doi"):
+    if doi := item.get("doi"):
         doc["identifier"] = {
             "@type": "PropertyValue",
             "propertyID": "doi",
             "value": str(doi),
         }
-    if (rating := meta.get("rating")) is not None:
+    if (rating := item.get("rating")) is not None:
         doc["aggregateRating"] = {
             "@type": "AggregateRating",
             "ratingValue": rating,
@@ -84,28 +71,26 @@ def build_jsonld(meta: dict, status: str | None) -> dict:
             "worstRating": 1,
             "ratingCount": 1,
         }
-    if tags := meta.get("tags"):
-        if isinstance(tags, list):
-            doc["keywords"] = ", ".join(str(t) for t in tags)
-        else:
-            doc["keywords"] = str(tags)
 
     # Extra map → additionalProperty
-    extra = meta.get("extra") or {}
+    extra = item.get("extra") or {}
     extras = []
     if isinstance(extra, dict):
         for k, v in extra.items():
-            extras.append({
-                "@type": "PropertyValue",
-                "name": str(k),
-                "value": v if isinstance(v, (str, int, float, bool)) else json.dumps(v),
-            })
-    # Anything else outside CORE_FIELDS, but not at top of meta — skip silently
+            extras.append(
+                {
+                    "@type": "PropertyValue",
+                    "name": str(k),
+                    "value": v
+                    if isinstance(v, (str, int, float, bool))
+                    else json.dumps(v),
+                }
+            )
     if extras:
         doc["additionalProperty"] = extras
 
     # ReadAction reflects current status
-    if status:
+    if status := item.get("status"):
         action_status = ACTION_STATUS.get(status, "PotentialActionStatus")
         doc["potentialAction"] = {
             "@type": "ReadAction",
@@ -115,48 +100,35 @@ def build_jsonld(meta: dict, status: str | None) -> dict:
     return doc
 
 
-def load_yaml(path: Path) -> Any:
-    if not path.exists():
-        return None
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
-    reading_yaml = root / "reading.yaml"
-    reading = load_yaml(reading_yaml) or {}
-    items = reading.get("items") or []
+    reading_path = root / "reading.yaml"
+    with reading_path.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
 
-    # Map item path -> status for quick lookup
-    status_by_path: dict[str, str] = {}
+    items = data.get("items") or []
+    written = 0
+    skipped = 0
+
     for item in items:
         if not isinstance(item, dict):
             continue
         path = item.get("path")
-        status = item.get("status") or "want-to-read"
-        if path:
-            status_by_path[path] = status
-
-    written = 0
-    skipped_no_meta = 0
-    for path, status in status_by_path.items():
+        if not path:
+            skipped += 1
+            continue
         item_dir = root / path
-        meta_path = item_dir / "meta.yaml"
-        if not meta_path.exists():
-            skipped_no_meta += 1
-            continue
-        meta = load_yaml(meta_path) or {}
-        if not isinstance(meta, dict):
-            sys.stderr.write(f"warn: {meta_path} is not a mapping; skipping\n")
-            continue
-        doc = build_jsonld(meta, status)
+        item_dir.mkdir(parents=True, exist_ok=True)
+        doc = build_jsonld(item)
         out_path = item_dir / "meta.json"
-        out_path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        out_path.write_text(
+            json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
         written += 1
         print(f"wrote {out_path.relative_to(root)}")
 
-    print(f"\ncompiled {written} item(s); {skipped_no_meta} without meta.yaml")
+    print(f"\ncompiled {written} item(s); {skipped} skipped")
     return 0
 
 
