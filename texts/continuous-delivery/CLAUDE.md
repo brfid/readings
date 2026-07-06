@@ -1,5 +1,5 @@
-# Continuous Delivery (Fowler, 2013)
+# Continuous Delivery
 
 **Status:** want-to-read
-**URL:** https://martinfowler.com/bliki/ContinuousDelivery.html
-
+**Location:** https://martinfowler.com/bliki/ContinuousDelivery.html
+**Author(s):** Fowler
