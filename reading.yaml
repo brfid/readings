@@ -1,7 +1,7 @@
 items:
 - label: Compound Engineering
   path: texts/compound-engineering
-  status: want-to-read
+  status: done
   url: https://every.to/guides/compound-engineering
 - label: Continuous Integration (Fowler, 2006)
   path: texts/continuous-integration
@@ -24,3 +24,4 @@ items:
   status: want-to-read
   url: Books app
 version: 1
+
