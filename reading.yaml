@@ -3,16 +3,20 @@ items:
   path: texts/compound-engineering
   status: want-to-read
   url: https://every.to/guides/compound-engineering
+  wallabag_url: https://raspberrypi.tailc4f7d6.ts.net/view/3
 - label: Continuous Integration (Fowler, 2006)
   path: texts/continuous-integration
   status: reading
   url: https://martinfowler.com/articles/continuousIntegration.html
+  wallabag_url: https://raspberrypi.tailc4f7d6.ts.net/view/2
 - label: Continuous Delivery (Fowler, 2013)
   path: texts/continuous-delivery
   status: want-to-read
   url: https://martinfowler.com/bliki/ContinuousDelivery.html
+  wallabag_url: https://raspberrypi.tailc4f7d6.ts.net/view/4
 - label: Deployment Pipeline (Fowler)
   path: texts/deployment-pipeline
   status: want-to-read
   url: https://martinfowler.com/bliki/DeploymentPipeline.html
+  wallabag_url: https://raspberrypi.tailc4f7d6.ts.net/view/5
 version: 1
