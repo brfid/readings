@@ -4,7 +4,7 @@ items:
   url: https://every.to/guides/compound-engineering
 - label: Continuous Integration (Fowler, 2006)
   path: texts/continuous-integration
-  status: want-to-read
+  status: reading
   url: https://martinfowler.com/articles/continuousIntegration.html
 - label: Continuous Delivery (Fowler, 2013)
   path: texts/continuous-delivery
