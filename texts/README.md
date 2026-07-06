@@ -1,6 +1,6 @@
 # Texts Index
 
-- 📋 [Compound Engineering](texts/compound-engineering/) — want-to-read [📖](https://raspberrypi.tailc4f7d6.ts.net/view/3)
-- 📖 [Continuous Integration (Fowler, 2006)](texts/continuous-integration/) — reading [📖](https://raspberrypi.tailc4f7d6.ts.net/view/2)
-- 📋 [Continuous Delivery (Fowler, 2013)](texts/continuous-delivery/) — want-to-read [📖](https://raspberrypi.tailc4f7d6.ts.net/view/4)
-- 📋 [Deployment Pipeline (Fowler)](texts/deployment-pipeline/) — want-to-read [📖](https://raspberrypi.tailc4f7d6.ts.net/view/5)
+- 📋 [Compound Engineering](texts/compound-engineering/) — want-to-read [link](https://every.to/guides/compound-engineering)
+- 📖 [Continuous Integration (Fowler, 2006)](texts/continuous-integration/) — reading [link](https://martinfowler.com/articles/continuousIntegration.html)
+- 📋 [Continuous Delivery (Fowler, 2013)](texts/continuous-delivery/) — want-to-read [link](https://martinfowler.com/bliki/ContinuousDelivery.html)
+- 📋 [Deployment Pipeline (Fowler)](texts/deployment-pipeline/) — want-to-read [link](https://martinfowler.com/bliki/DeploymentPipeline.html)
