@@ -1,5 +1,5 @@
-# Continuous Integration (Fowler, 2006)
+# Continuous Integration
 
-**Status:** want-to-read
-**URL:** https://martinfowler.com/articles/continuousIntegration.html
-
+**Status:** reading
+**Location:** https://martinfowler.com/articles/continuousIntegration.html
+**Author(s):** Fowler
