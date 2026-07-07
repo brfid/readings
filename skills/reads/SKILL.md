@@ -1,92 +1,118 @@
 ---
 name: reads
-description: "Use when tracking reading via the brfid/reads GitHub repo — add items, update status, query, search, discuss, capture facts, save content, or drain the cross-profile queue."
-version: 3.0.0
+description: "Use when tracking reading via brfid/reads GitHub Issues — add items, update status, query, search, discuss, capture facts, or drain the cross-profile queue."
+version: 4.0.0
 author: Brad Fidler
 license: MIT
 metadata:
   hermes:
-    tags: [reading, tracking, github, yaml, books, articles]
+    tags: [reading, tracking, github, issues]
     related_skills: [github-repo-management]
 ---
 
 # Reads
 
-Personal reading tracker: `brfid/reads` on GitHub, cloned locally at
-`~/.hermes/profiles/bede/workspace/reads`. All operations go through
-`reads.py` — a stdlib-only CLI that handles YAML loading, validation,
-git commit/push, and README regeneration.
+Personal reading tracker: GitHub Issues on `brfid/reads`. Every reading item is an Issue.
+Per-item context (CLAUDE.md, content.md) lives in `texts/{folder}/`. No custom code — everything
+goes through `gh issue` and `gh api`.
 
 ## When to Use
 
 Add, start, finish, note, search, query, discuss, or save reading items.
-Drain the cross-profile queue. Query reading history via git log.
+Drain the cross-profile queue. Query reading history via issue events.
 
 **Do NOT use for:** general web research, literature reviews, note-taking outside the tracker.
 
+## Architecture (v4 — July 2026)
+
+- **GitHub Issues** — source of truth. Title = item name. Labels = status + type. Body = metadata frontmatter + links to texts/.
+- **`texts/{folder}/`** — CLAUDE.md (agent context), content.md (saved content). conversations.md stays but issue comments are the preferred discussion channel.
+- **Cross-profile queue** — other profiles run `gh issue create --title "..." --label "status:queued,from:jinny" --repo brfid/reads`. No queue.yaml, no race conditions.
+- **No custom code** — `gh issue` handles all CRUD. No reads.py, no YAML, no CI needed.
+
 ## Pre-Flight
 
-1. `cd ~/.hermes/profiles/bede/workspace/reads && git pull --rebase`
-2. Check queue: `python3 reads.py queue-drain` (if items pending, ask user first)
-3. Run the command (see table below)
-4. If `reads.py` reports ambiguous match, show candidates and ask user to disambiguate
-
-## Architecture (v3 — July 2026)
-
-- **`reading.yaml`** — single source of truth. All metadata in one file (v2 schema). No per-item meta.yaml.
-- **`texts/{folder}/`** — CLAUDE.md (agent context), conversations.md (discussion log), content.md (saved content), meta.json (CI-generated, don't edit).
-- **`queue.yaml`** — cross-profile inbox. Other agents append via `reads.py queue-add`.
-- **`reads.py`** — CLI that replaces all bash templates. Validates schema on every write.
-- **CI** — `reads.py validate` + `compile_meta.py` on push.
-
-## YAML Schema (v2)
-
-```yaml
-version: 2
-items:
-  - title: "DDIA"
-    authors: [Martin Kleppmann]    # optional list
-    type: book                     # book | article | paper | post
-    location: "https://..."        # URL or "Books app"
-    path: texts/ddia               # required, must start with texts/
-    status: reading                # want-to-read | reading | done | abandoned
-    publisher: "O'Reilly"          # optional
-    published: "2017"               # optional, string
-    isbn: "978-..."                 # optional
-    rating: 4                       # optional, 1-5
-    notes: []                       # optional list of strings
+```bash
+gh issue list --label "status:queued" --repo brfid/reads
 ```
 
-No date fields. Git history = timeline. CI extracts dates from commits.
+If items with `from:` label exist, ask user to drain. Otherwise proceed.
 
 ## Intent → Command
 
-| Intent | Trigger examples | Command |
-|--------|-----------------|----------|
-| **Add** | "add DDIA", "track https://..." | `python3 reads.py add --title "T" --author "A" --type book --location "URL"` |
-| **Start** | "started DDIA", "reading now" | `python3 reads.py start "ref"` |
-| **Finish** | "finished DDIA", "done with DDIA" | `python3 reads.py finish "ref" --rating 5` |
-| **Note** | "note on DDIA: chapter 5 great" | `python3 reads.py note "ref" "text"` |
-| **Fact** | "author is Kleppmann", "isbn 978-..." | `python3 reads.py fact "ref" field value` |
-| **Discuss** | "discuss DDIA", "continue DDIA" | `python3 reads.py discuss "ref" "text" --topic "slug"` |
-| **Save** | "save compound engineering" | `python3 reads.py save "ref"` |
-| **Query** | "what am I reading?", "show backlog" | `python3 reads.py query --status reading` |
-| **Search** | "what about distributed systems?" | `python3 reads.py search "keyword"` |
-| **History** | "when did I finish DDIA?" | `python3 reads.py history "ref"` |
-| **README** | "update readme" | `python3 reads.py readme` |
-| **Queue Add** | (from other profiles) | `python3 reads.py queue-add --location "URL" --title "T" --from jinny` |
-| **Queue Drain** | "process queue" | `python3 reads.py queue-drain` |
-| **Validate** | (CI only) | `python3 reads.py validate` |
+All commands run from `~/.hermes/profiles/bede/workspace/reads`. Set `REPO=brfid/reads`.
 
-`<ref>` is a title, path, or fuzzy search string. If ambiguous, reads.py lists candidates and exits 1.
+**Finding the issue number** for a given title — run this once at the start, store the number:
+```bash
+N=$(gh issue list --search "title" --repo "$REPO" --json number --jq '.[0].number')
+```
+
+| Intent | Command |
+|--------|---------|
+| **Add** | `gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "**Author(s):** AUTHORS\n**Type:** TYPE\n**Location:** URL\n\n[Agent context](texts/folder/CLAUDE.md)" --repo $REPO` |
+| **Start** | `N=$(...); gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --repo $REPO` |
+| **Finish** | `N=$(...); gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo $REPO && gh issue close $N --reason completed --repo $REPO` |
+| **Note** | `N=$(...); gh issue comment $N --body "NOTE TEXT" --repo $REPO` |
+| **Fact** | Update the issue body: `N=$(...); gh issue view $N --json body --jq .body ...` then `gh issue edit $N --body "..."`. Or just add a comment with the fact. |
+| **Discuss** | `N=$(...); gh issue comment $N --body "DISCUSSION TEXT" --repo $REPO` |
+| **Save** | Fetch URL → write `texts/{folder}/content.md`. No issue operation needed. |
+| **Query** | `gh issue list --label "status:reading" --repo $REPO` (or `status:queued`, `status:done --state closed`) |
+| **Search** | `gh issue list --search "keyword in:issues" --repo $REPO` |
+| **History** | `N=$(...); gh api "/repos/$REPO/issues/$N/events" --jq '.[] \| "\(.created_at)  \(.event)  \(.label.name // "")"'` |
+| **README** | No README — browse GitHub Issues UI at `https://github.com/brfid/reads/issues` filtered by label |
+| **Queue Add** | (other profile) `gh issue create --title "TITLE" --label "status:queued,from:PROFILE,type:TYPE" --repo brfid/reads` |
+| **Queue Drain** | List `status:queued` issues → for each, run Add (create folder + CLAUDE.md), then Start |
+
+## Labels
+
+```
+status:queued     # want-to-read / backlog
+status:reading    # currently reading
+status:done       # finished (close the issue)
+status:abandoned  # gave up (close the issue --reason "not planned")
+type:book         # → Book
+type:article      # → Article  
+type:paper        # → ScholarlyArticle
+type:post         # → BlogPosting
+from:jinny        # queued by jinny profile
+from:manual       # queued manually
+```
+
+## Issue Body Template
+
+```markdown
+**Author(s):** Name  
+**Type:** book | article | paper | post  
+**Location:** URL or "Books app"  
+**Published:** YYYY (optional)  
+**Publisher:** Name (optional)  
+**ISBN:** 978-... (optional)  
+**Rating:** N/5 (optional, set on finish)
+
+[Agent context](texts/folder/CLAUDE.md)
+[Saved content](texts/folder/content.md)  (if exists)
+```
 
 ## Matching Items
 
-`reads.py resolve()` matches: exact path → exact title (case-insensitive) → fuzzy substring. If multiple matches, it prints candidates and exits — show them to the user and ask.
+`gh issue list --search` handles fuzzy matching natively. For exact title match:
+```bash
+N=$(gh issue list --search "TITLE in:title" --repo $REPO --json number --jq '.[0].number')
+```
 
-## Folder Naming
+If empty/ambiguous, `gh issue list --search "partial match in:title"` shows candidates.
 
-Derived from title: lowercase, hyphens, strip leading articles (a/an/the), max 40 chars. Collisions get `-2`, `-3` suffixes.
+## Texts Folders
+
+On Add, create `texts/{folder}/` with CLAUDE.md and conversations.md:
+```bash
+mkdir -p texts/{folder}
+echo "# TITLE\n\n**Status:** queued\n**Location:** URL" > texts/{folder}/CLAUDE.md
+touch texts/{folder}/conversations.md
+git add texts/{folder} && git commit -m "add TITLE" && git push
+```
+
+Folder name: lowercase, hyphens, strip leading articles, max 40 chars. Collisions: `-2`, `-3`, etc.
 
 ## Reference Files
 
@@ -94,7 +120,8 @@ Derived from title: lowercase, hyphens, strip leading articles (a/an/the), max 4
 
 ## Notes
 
-- All git operations use SSH (`git@github.com:brfid/reads.git`) — the HTTPS OAuth token lacks `workflow` scope.
-- `reads.py` handles folder file creation (CLAUDE.md, conversations.md) automatically on `add`.
-- `notes` is a list of strings — each note is its own entry.
-- `authors` is comma-separated on the CLI: `--author "A" --author "B"` or `fact authors "A, B"`.
+- No custom code. No YAML. No CI.
+- `gh` CLI must be authenticated and have repo scope.
+- Issue body edits for facts: `gh issue view N --json body` → modify → `gh issue edit N --body "..."`
+- For conversations.md, prefer issue comments. The file stays for backward compatibility.
+- Timeline events show all label changes + comments with timestamps — history is free.
