@@ -27,6 +27,8 @@ for label in status:queued status:reading status:done status:abandoned \
 done
 ```
 
+## When to Use
+
 Add, start, finish, note, search, query, discuss, or save reading items.
 Drain the cross-profile queue. Query reading history via issue events.
 
@@ -47,9 +49,16 @@ gh issue list --label "status:queued" --repo brfid/reads
 
 If items with `from:` label exist, ask user to drain. Otherwise proceed.
 
+**Most operations need no local clone** — `gh issue` and `gh api` work directly against the repo.
+Only **Add** and **Queue Drain** create `texts/{folder}/` files and need the local clone:
+
+```bash
+cd ~/.hermes/profiles/bede/workspace/reads && git pull --rebase
+```
+
 ## Intent → Command
 
-All commands run from `~/.hermes/profiles/bede/workspace/reads`. Set `REPO=brfid/reads`.
+Set `REPO=brfid/reads`. All commands run directly — no local clone needed except Add/Drain.
 
 **Finding the issue number** for a given title — run this once at the start, store the number:
 ```bash
