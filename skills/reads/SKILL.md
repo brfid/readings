@@ -16,6 +16,10 @@ Personal reading tracker: GitHub Issues on `brfid/reads`. Every reading item is 
 Per-item context (CLAUDE.md, content.md) lives in `texts/{folder}/`. No custom code — everything
 goes through `gh issue` and `gh api`.
 
+**SoC: README = canonical schema + ops reference. This skill = intent→command mapping + pre-flight logic.**
+If anything in this skill contradicts the README, the README wins. Other profiles only need the
+README's "Queue item" command; they don't need this full skill.
+
 ## Setup (first-time)
 
 Labels must exist on the repo before use. Run once:
@@ -59,6 +63,9 @@ cd ~/.hermes/profiles/bede/workspace/reads && git pull --rebase
 ## Intent → Command
 
 Set `REPO=brfid/reads`. All commands run directly — no local clone needed except Add/Drain.
+**The README is the canonical schema + ops reference.** Labels, body template,
+and commands are at https://github.com/brfid/reads#readme — load it if unsure.
+This skill adds only the intent→command mapping and pre-flight logic.
 
 **Finding the issue number** for a given title — run this once at the start, store the number:
 ```bash
@@ -81,35 +88,15 @@ N=$(gh issue list --search "title" --repo "$REPO" --json number --jq '.[0].numbe
 | **Queue Add** | (other profile) `gh issue create --title "TITLE" --label "status:queued,from:PROFILE,type:TYPE" --repo brfid/reads` |
 | **Queue Drain** | List `status:queued` issues. For each: create `texts/{folder}/` with CLAUDE.md + conversations.md (do NOT create a new issue — it already exists from Queue Add). Then git add/commit/push, and `gh issue edit N --add-label "status:reading" --remove-label "status:queued"`. |
 
-## Labels
+## Labels & Body Template
 
-```
-status:queued     # want-to-read / backlog
-status:reading    # currently reading
-status:done       # finished (close the issue)
-status:abandoned  # gave up (close the issue --reason "not planned")
-type:book         # → Book
-type:article      # → Article  
-type:paper        # → ScholarlyArticle
-type:post         # → BlogPosting
-from:jinny        # queued by jinny profile
-from:manual       # queued manually
-```
+See [README](https://github.com/brfid/reads#readme) — canonical reference. Quick reference below.
 
-## Issue Body Template
+**Status labels:** `status:queued` (backlog), `status:reading`, `status:done` (close issue), `status:abandoned` (close --reason "not planned")
+**Type labels:** `type:book`, `type:article`, `type:paper`, `type:post`
+**Queue labels:** `from:jinny`, `from:manual`
 
-```markdown
-**Author(s):** Name  
-**Type:** book | article | paper | post  
-**Location:** URL or "Books app"  
-**Published:** YYYY (optional)  
-**Publisher:** Name (optional)  
-**ISBN:** 978-... (optional)  
-**Rating:** N/5 (optional, set on finish)
-
-[Agent context](texts/folder/CLAUDE.md)
-[Saved content](texts/folder/content.md)  (if exists)
-```
+Body template (see README for full format): Author, Type, Location, optional Published/Publisher/ISBN/Rating, then link to `texts/folder/CLAUDE.md`.
 
 ## Matching Items
 

@@ -27,8 +27,25 @@ GitHub Issues are the source of truth. No custom code, no YAML, no CI.
 ## Operations (gh CLI)
 
 ```
+# Add item (bede profile only — creates texts/{folder}/)
+mkdir -p texts/<folder>
+printf '# TITLE\n\n**Status:** queued\n**Location:** URL' > texts/<folder>/CLAUDE.md
+touch texts/<folder>/conversations.md
+git add texts/<folder> && git commit -m "add TITLE" && git push
+gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "**Author(s):** NAME
+**Type:** TYPE
+**Location:** URL
+
+[Agent context](texts/<folder>/CLAUDE.md)" --repo brfid/reads
+
+# Queue item (any profile — no local clone needed)
+gh issue create --title "TITLE" --label "status:queued,from:jinny,type:book" --repo brfid/reads
+
 # Query
 gh issue list --label "status:reading" --repo brfid/reads
+
+# Search
+gh issue list --search "keyword in:title,in:body" --repo brfid/reads
 
 # Start reading
 N=$(gh issue list --search "TITLE in:title" --repo brfid/reads --json number --jq '.[0].number')
@@ -37,6 +54,9 @@ gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --r
 # Finish
 gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo brfid/reads
 gh issue close $N --reason completed --repo brfid/reads
+
+# Note / discuss
+gh issue comment $N --body "NOTE" --repo brfid/reads
 
 # Timeline
 gh api "/repos/brfid/reads/issues/$N/events" --jq '.[] | "\(.created_at)  \(.event)  \(.label.name // "")"'
