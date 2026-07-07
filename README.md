@@ -1,13 +1,13 @@
 # Reading Tracker
 
-GitHub Issues are the source of truth. No custom code, no YAML, no CI.
+GitHub Issues are the source of truth.
 
 ## Schema
 
-- **Title** — item name (e.g. "Designing Data-Intensive Applications")
+- **Title** — item name
 - **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}`
 - **Body** — key:value frontmatter, then links to `texts/{folder}/`
-- **Comments** — discussion log (replaces conversations.md)
+- **Comments** — discussion log
 - **Queue** — other agents create issues with label `from:{profile}`
 
 ## Issue body template
@@ -38,7 +38,7 @@ gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "**Auth
 
 [Agent context](texts/<folder>/CLAUDE.md)" --repo brfid/reads
 
-# Queue item (any profile — no local clone needed)
+# Queue item (any profile)
 gh issue create --title "TITLE" --label "status:queued,from:jinny,type:book" --repo brfid/reads
 
 # Query
@@ -68,7 +68,5 @@ gh api "/repos/brfid/reads/issues/$N/events" --jq '.[] | "\(.created_at)  \(.eve
 texts/{folder}/
   CLAUDE.md         # agent identity + reading context
   content.md        # saved article (optional)
-  conversations.md  # legacy discussion log (prefer issue comments)
+  conversations.md  # discussion log (issue comments preferred for new discussions)
 ```
-
-No `reading.yaml`, `reads.py`, `compile_meta.py`, `queue.yaml`, or CI workflows.

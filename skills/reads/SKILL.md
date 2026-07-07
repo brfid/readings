@@ -38,12 +38,12 @@ Drain the cross-profile queue. Query reading history via issue events.
 
 **Do NOT use for:** general web research, literature reviews, note-taking outside the tracker.
 
-## Architecture (v4 — July 2026)
+## Architecture
 
 - **GitHub Issues** — source of truth. Title = item name. Labels = status + type. Body = metadata frontmatter + links to texts/.
-- **`texts/{folder}/`** — CLAUDE.md (agent context), content.md (saved content). conversations.md stays but issue comments are the preferred discussion channel.
-- **Cross-profile queue** — other profiles run `gh issue create --title "..." --label "status:queued,from:jinny" --repo brfid/reads`. No queue.yaml, no race conditions.
-- **No custom code** — `gh issue` handles all CRUD. No reads.py, no YAML, no CI needed.
+- **`texts/{folder}/`** — CLAUDE.md (agent context), content.md (saved content), conversations.md (discussion log; issue comments preferred for new discussions).
+- **Cross-profile queue** — other profiles run `gh issue create --title "..." --label "status:queued,from:jinny" --repo brfid/reads`.
+- **No custom code** — `gh issue` handles all CRUD.
 
 ## Pre-Flight
 
@@ -125,8 +125,7 @@ Folder name: lowercase, hyphens, strip leading articles, max 40 chars. Collision
 
 ## Notes
 
-- No custom code. No YAML. No CI.
 - `gh` CLI must be authenticated and have repo scope.
 - Issue body edits for facts: `gh issue view N --json body` → modify → `gh issue edit N --body "..."`
-- For conversations.md, prefer issue comments. The file stays for backward compatibility.
-- Timeline events show all label changes + comments with timestamps — history is free.
+- Timeline events show all label changes + comments with timestamps.
+- `conversations.md` files serve as local discussion log; issue comments are preferred for new discussions.
