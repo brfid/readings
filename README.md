@@ -1,11 +1,54 @@
 # Reading Tracker
 
-→ [GitHub Issues](https://github.com/brfid/reads/issues)
+GitHub Issues are the source of truth. No custom code, no YAML, no CI.
 
-This repo tracks reading via GitHub Issues filtered by label:
+## Schema
 
-- [Currently reading](https://github.com/brfid/reads/issues?q=label%3Astatus%3Areading)
-- [Backlog](https://github.com/brfid/reads/issues?q=label%3Astatus%3Aqueued)
-- [Finished](https://github.com/brfid/reads/issues?q=label%3Astatus%3Adone+is%3Aclosed)
+- **Title** — item name (e.g. "Designing Data-Intensive Applications")
+- **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}`
+- **Body** — key:value frontmatter, then links to `texts/{folder}/`
+- **Comments** — discussion log (replaces conversations.md)
+- **Queue** — other agents create issues with label `from:{profile}`
 
-Per-item context (CLAUDE.md, saved content) lives in `texts/{folder}/`.
+## Issue body template
+
+```
+**Author(s):** Name
+**Type:** book | article | paper | post
+**Location:** URL or "Books app"
+**Published:** YYYY
+**Publisher:** Name
+**ISBN:** 978-...
+**Rating:** N/5
+
+[Agent context](texts/folder/CLAUDE.md)
+```
+
+## Operations (gh CLI)
+
+```
+# Query
+gh issue list --label "status:reading" --repo brfid/reads
+
+# Start reading
+N=$(gh issue list --search "TITLE in:title" --repo brfid/reads --json number --jq '.[0].number')
+gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --repo brfid/reads
+
+# Finish
+gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo brfid/reads
+gh issue close $N --reason completed --repo brfid/reads
+
+# Timeline
+gh api "/repos/brfid/reads/issues/$N/events" --jq '.[] | "\(.created_at)  \(.event)  \(.label.name // "")"'
+```
+
+## Repo layout
+
+```
+texts/{folder}/
+  CLAUDE.md         # agent identity + reading context
+  content.md        # saved article (optional)
+  conversations.md  # legacy discussion log (prefer issue comments)
+```
+
+No `reading.yaml`, `reads.py`, `compile_meta.py`, `queue.yaml`, or CI workflows.
