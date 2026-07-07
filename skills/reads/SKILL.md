@@ -16,7 +16,16 @@ Personal reading tracker: GitHub Issues on `brfid/reads`. Every reading item is 
 Per-item context (CLAUDE.md, content.md) lives in `texts/{folder}/`. No custom code — everything
 goes through `gh issue` and `gh api`.
 
-## When to Use
+## Setup (first-time)
+
+Labels must exist on the repo before use. Run once:
+```bash
+for label in status:queued status:reading status:done status:abandoned \
+             type:book type:article type:paper type:post \
+             from:jinny from:manual; do
+  gh label create "$label" --repo brfid/reads --force
+done
+```
 
 Add, start, finish, note, search, query, discuss, or save reading items.
 Drain the cross-profile queue. Query reading history via issue events.
@@ -57,11 +66,11 @@ N=$(gh issue list --search "title" --repo "$REPO" --json number --jq '.[0].numbe
 | **Discuss** | `N=$(...); gh issue comment $N --body "DISCUSSION TEXT" --repo $REPO` |
 | **Save** | Fetch URL → write `texts/{folder}/content.md`. No issue operation needed. |
 | **Query** | `gh issue list --label "status:reading" --repo $REPO` (or `status:queued`, `status:done --state closed`) |
-| **Search** | `gh issue list --search "keyword in:issues" --repo $REPO` |
+| **Search** | `gh issue list --search "keyword in:title,in:body" --repo $REPO` |
 | **History** | `N=$(...); gh api "/repos/$REPO/issues/$N/events" --jq '.[] \| "\(.created_at)  \(.event)  \(.label.name // "")"'` |
 | **README** | No README — browse GitHub Issues UI at `https://github.com/brfid/reads/issues` filtered by label |
 | **Queue Add** | (other profile) `gh issue create --title "TITLE" --label "status:queued,from:PROFILE,type:TYPE" --repo brfid/reads` |
-| **Queue Drain** | List `status:queued` issues → for each, run Add (create folder + CLAUDE.md), then Start |
+| **Queue Drain** | List `status:queued` issues. For each: create `texts/{folder}/` with CLAUDE.md + conversations.md (do NOT create a new issue — it already exists from Queue Add). Then git add/commit/push, and `gh issue edit N --add-label "status:reading" --remove-label "status:queued"`. |
 
 ## Labels
 

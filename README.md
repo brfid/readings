@@ -1,17 +1,11 @@
 # Reading Tracker
 
-**Currently reading:** 2
-**Finished:** 1
-**Backlog:** 3
+→ [GitHub Issues](https://github.com/brfid/reads/issues)
 
-## Currently Reading
-- [Continuous Integration (Fowler)](texts/continuous-integration/)
-- [Always Coming Home (Ursula K. Le Guin)](texts/always-coming-home/)
+This repo tracks reading via GitHub Issues filtered by label:
 
-## Recently Finished
-- [Compound Engineering](texts/compound-engineering/)
+- [Currently reading](https://github.com/brfid/reads/issues?q=label%3Astatus%3Areading)
+- [Backlog](https://github.com/brfid/reads/issues?q=label%3Astatus%3Aqueued)
+- [Finished](https://github.com/brfid/reads/issues?q=label%3Astatus%3Adone+is%3Aclosed)
 
-## Backlog (3)
-- Continuous Delivery
-- Deployment Pipeline
-- Arctic Dreams
+Per-item context (CLAUDE.md, saved content) lives in `texts/{folder}/`.
