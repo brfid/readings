@@ -8,8 +8,9 @@ GitHub Issues are the source of truth.
 - **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}` + optional `reread` flag
 - **Body** — key:value frontmatter, then links to `texts/{folder}/`
 - **Comments** — discussion log
-- **Queue** — other agents create issues with label `from:{profile}`
+- **Queue** — other agents create issues with label `from:{profile}`. `from:` marks *source*, not handler — bede adding an item directly (including a reread) gets no `from:` label at all; `from:bede` is reserved for items sourced from the Miniflux collector.
 - **`reread`** — orthogonal flag, any medium (not just books). Tense comes from the paired `status:` label (`status:queued`+`reread` = planning to reread, `status:reading`+`reread` = mid-reread, `status:done`+`reread` = have reread), not from the flag itself. Persists through close so reread history stays queryable.
+- **No unsolicited notes** — Add/Reread bodies hold only the frontmatter fields supplied; no summaries or commentary unless asked for as a separate Note.
 
 ## Issue body template
 
@@ -58,10 +59,16 @@ gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --r
 gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo brfid/readings
 gh issue close $N --reason completed --repo brfid/readings
 
-# Reread (any medium) — reopen a done item and mark a fresh pass
+# Reread — already tracked (issue exists, status:done): reopen + relabel
 gh issue reopen $N --repo brfid/readings
 gh issue edit $N --add-label "reread,status:reading" --remove-label "status:done" --repo brfid/readings
 # ... then Finish as normal; "reread" persists through close
+
+# Reread — not yet tracked (no prior issue, e.g. read before this tracker existed)
+# No from: label, no texts/{folder}/ scaffolding, no [Agent context] link, no editorializing.
+gh issue create --title "TITLE" --label "status:queued,type:TYPE,reread" --body "**Author(s):** NAME
+**Type:** TYPE
+**Location:** URL" --repo brfid/readings
 
 # Note / discuss
 gh issue comment $N --body "NOTE" --repo brfid/readings
