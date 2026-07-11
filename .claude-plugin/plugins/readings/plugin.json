@@ -1,10 +1,10 @@
 {
-  "name": "reads",
+  "name": "readings",
   "version": "0.1.0",
   "description": "Personal reading tracker. Add, update, query, search reading items via natural language.",
   "author": {
     "name": "brfid"
   },
-  "repository": "https://github.com/brfid/reads",
+  "repository": "https://github.com/brfid/readings",
   "license": "MIT"
 }

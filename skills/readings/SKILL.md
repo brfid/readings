@@ -1,6 +1,6 @@
 ---
-name: reads
-description: "Use when tracking reading via brfid/reads GitHub Issues — add items, update status, query, search, discuss, capture facts, or drain the cross-profile queue."
+name: readings
+description: "Use when tracking reading via brfid/readings GitHub Issues — add items, update status, query, search, discuss, capture facts, or drain the cross-profile queue."
 version: 4.0.0
 author: Brad Fidler
 license: MIT
@@ -12,7 +12,7 @@ metadata:
 
 # Reads
 
-Personal reading tracker: GitHub Issues on `brfid/reads`. Every reading item is an Issue.
+Personal reading tracker: GitHub Issues on `brfid/readings`. Every reading item is an Issue.
 Per-item context (CLAUDE.md, content.md) lives in `texts/{folder}/`. No custom code — everything
 goes through `gh issue` and `gh api`.
 
@@ -26,8 +26,8 @@ Labels must exist on the repo before use. Run once:
 ```bash
 for label in status:queued status:reading status:done status:abandoned \
              type:book type:article type:paper type:post \
-             from:jinny from:manual; do
-  gh label create "$label" --repo brfid/reads --force
+             from:veblen from:manual; do
+  gh label create "$label" --repo brfid/readings --force
 done
 ```
 
@@ -42,13 +42,13 @@ Drain the cross-profile queue. Query reading history via issue events.
 
 - **GitHub Issues** — source of truth. Title = item name. Labels = status + type. Body = metadata frontmatter + links to texts/.
 - **`texts/{folder}/`** — CLAUDE.md (agent context), content.md (saved content), conversations.md (discussion log; issue comments preferred for new discussions).
-- **Cross-profile queue** — other profiles run `gh issue create --title "..." --label "status:queued,from:jinny" --repo brfid/reads`.
+- **Cross-profile queue** — other profiles run `gh issue create --title "..." --label "status:queued,from:veblen" --repo brfid/readings`.
 - **No custom code** — `gh issue` handles all CRUD.
 
 ## Pre-Flight
 
 ```bash
-gh issue list --label "status:queued" --repo brfid/reads
+gh issue list --label "status:queued" --repo brfid/readings
 ```
 
 If items with `from:` label exist, ask user to drain. Otherwise proceed.
@@ -62,9 +62,9 @@ cd ~/.hermes/profiles/bede/workspace/reads && git pull --rebase
 
 ## Intent → Command
 
-Set `REPO=brfid/reads`. All commands run directly — no local clone needed except Add/Drain.
+Set `REPO=brfid/readings`. All commands run directly — no local clone needed except Add/Drain.
 **The README is the canonical schema + ops reference.** Labels, body template,
-and commands are at https://github.com/brfid/reads#readme — load it if unsure.
+and commands are at https://github.com/brfid/readings#readme — load it if unsure.
 This skill adds only the intent→command mapping and pre-flight logic.
 
 **Finding the issue number** for a given title — run this once at the start, store the number:
@@ -84,17 +84,17 @@ N=$(gh issue list --search "title" --repo "$REPO" --json number --jq '.[0].numbe
 | **Query** | `gh issue list --label "status:reading" --repo $REPO` (or `status:queued`, `status:done --state closed`) |
 | **Search** | `gh issue list --search "keyword in:title,in:body" --repo $REPO` |
 | **History** | `N=$(...); gh api "/repos/$REPO/issues/$N/events" --jq '.[] \| "\(.created_at)  \(.event)  \(.label.name // "")"'` |
-| **README** | No README — browse GitHub Issues UI at `https://github.com/brfid/reads/issues` filtered by label |
-| **Queue Add** | (other profile) `gh issue create --title "TITLE" --label "status:queued,from:PROFILE,type:TYPE" --repo brfid/reads` |
+| **README** | No README — browse GitHub Issues UI at `https://github.com/brfid/readings/issues` filtered by label |
+| **Queue Add** | (other profile) `gh issue create --title "TITLE" --label "status:queued,from:PROFILE,type:TYPE" --repo brfid/readings` |
 | **Queue Drain** | List `status:queued` issues. For each: create `texts/{folder}/` with CLAUDE.md + conversations.md (do NOT create a new issue — it already exists from Queue Add). Then git add/commit/push, and `gh issue edit N --add-label "status:reading" --remove-label "status:queued"`. |
 
 ## Labels & Body Template
 
-See [README](https://github.com/brfid/reads#readme) — canonical reference. Quick reference below.
+See [README](https://github.com/brfid/readings#readme) — canonical reference. Quick reference below.
 
 **Status labels:** `status:queued` (backlog), `status:reading`, `status:done` (close issue), `status:abandoned` (close --reason "not planned")
 **Type labels:** `type:book`, `type:article`, `type:paper`, `type:post`
-**Queue labels:** `from:jinny`, `from:manual`
+**Queue labels:** `from:veblen`, `from:manual`
 
 Body template (see README for full format): Author, Type, Location, optional Published/Publisher/ISBN/Rating, then link to `texts/folder/CLAUDE.md`.
 

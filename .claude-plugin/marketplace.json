@@ -1,13 +1,13 @@
 {
-  "name": "reads",
+  "name": "readings",
   "owner": {
     "name": "brfid"
   },
   "plugins": [
     {
-      "name": "reads",
+      "name": "readings",
       "description": "Personal reading tracker — natural language add, status, query, search, discuss.",
-      "source": "./.claude-plugin/plugins/reads",
+      "source": "./.claude-plugin/plugins/readings",
       "author": {
         "name": "brfid"
       }
