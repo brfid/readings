@@ -5,10 +5,11 @@ GitHub Issues are the source of truth.
 ## Schema
 
 - **Title** — item name
-- **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}`
+- **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}` + optional `reread` flag
 - **Body** — key:value frontmatter, then links to `texts/{folder}/`
 - **Comments** — discussion log
 - **Queue** — other agents create issues with label `from:{profile}`
+- **`reread`** — orthogonal flag, any medium (not just books). Tense comes from the paired `status:` label (`status:queued`+`reread` = planning to reread, `status:reading`+`reread` = mid-reread, `status:done`+`reread` = have reread), not from the flag itself. Persists through close so reread history stays queryable.
 
 ## Issue body template
 
@@ -56,6 +57,11 @@ gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --r
 # Finish
 gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo brfid/readings
 gh issue close $N --reason completed --repo brfid/readings
+
+# Reread (any medium) — reopen a done item and mark a fresh pass
+gh issue reopen $N --repo brfid/readings
+gh issue edit $N --add-label "reread,status:reading" --remove-label "status:done" --repo brfid/readings
+# ... then Finish as normal; "reread" persists through close
 
 # Note / discuss
 gh issue comment $N --body "NOTE" --repo brfid/readings
