@@ -8,7 +8,7 @@ GitHub Issues are the source of truth.
 - **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}` + optional `reread` flag
 - **Body** — key:value frontmatter, then links to `texts/{folder}/`
 - **Comments** — discussion log
-- **Queue** — other agents create issues with label `from:{profile}`. `from:` marks *source*, not handler — bede adding an item directly (including a reread) gets no `from:` label at all; `from:bede` is reserved for items sourced from the Miniflux collector.
+- **`from:bede`** — marks an item as sourced from the Miniflux collector, not manually added. Bede adding an item directly (including a reread) gets no `from:` label at all.
 - **`reread`** — orthogonal flag, any medium (not just books). Tense comes from the paired `status:` label (`status:queued`+`reread` = planning to reread, `status:reading`+`reread` = mid-reread, `status:done`+`reread` = have reread), not from the flag itself. Persists through close so reread history stays queryable.
 - **No unsolicited notes** — Add/Reread bodies hold only the frontmatter fields supplied; no summaries or commentary unless asked for as a separate Note.
 
@@ -41,9 +41,6 @@ gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "**Auth
 **Location:** URL
 
 [Agent context](texts/<folder>/CLAUDE.md)" --repo brfid/readings
-
-# Queue item (any profile)
-gh issue create --title "TITLE" --label "status:queued,from:veblen,type:book" --repo brfid/readings
 
 # Query
 gh issue list --label "status:reading" --repo brfid/readings
