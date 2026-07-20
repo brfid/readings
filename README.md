@@ -1,16 +1,27 @@
 # Reading Tracker
 
-GitHub Issues are the source of truth.
+GitHub Issues are the source of truth. Any agent with the `gh` CLI, authenticated
+with `repo` scope against this repository, can run every operation below directly —
+no local clone required except where noted.
 
 ## Schema
 
 - **Title** — item name
 - **Labels** — `status:{queued,reading,done,abandoned}` + `type:{book,article,paper,post}` + optional `reread` flag
-- **Body** — key:value frontmatter, then links to `texts/{folder}/`
+- **Body** — key:value frontmatter, then a link to `texts/{folder}/`
 - **Comments** — discussion log
-- **`from:bede`** — marks an item as sourced from the Miniflux collector, not manually added. Bede adding an item directly (including a reread) gets no `from:` label at all.
 - **`reread`** — orthogonal flag, any medium (not just books). Tense comes from the paired `status:` label (`status:queued`+`reread` = planning to reread, `status:reading`+`reread` = mid-reread, `status:done`+`reread` = have reread), not from the flag itself. Persists through close so reread history stays queryable.
 - **No unsolicited notes** — Add/Reread bodies hold only the frontmatter fields supplied; no summaries or commentary unless asked for as a separate Note.
+
+## Setup (one-time)
+
+Labels must exist on the repo before use:
+```
+for label in status:queued status:reading status:done status:abandoned \
+             type:book type:article type:paper type:post; do
+  gh label create "$label" --repo brfid/readings --force
+done
+```
 
 ## Issue body template
 
@@ -26,13 +37,22 @@ GitHub Issues are the source of truth.
 [Agent context](texts/folder/CLAUDE.md)
 ```
 
+## Folder naming (for `texts/{folder}/`)
+
+Derive from the title (or URL, if no clean title is available):
+- Lowercase, hyphens for spaces
+- Strip leading articles (a/an/the)
+- Max 40 characters, truncate at a word boundary
+- Collisions: suffix `-2`, `-3`, etc.
+- Examples: `always-coming-home`, `raft-explained`, `2103-04992` (from an arXiv URL)
+
 ## Operations (gh CLI)
 
 ```
-# Add item (bede profile only — creates texts/{folder}/ via Contents API, no local clone)
+# Add item — creates texts/<folder>/ via the Contents API (no local clone needed)
 gh api --method PUT "repos/brfid/readings/contents/texts/<folder>/CLAUDE.md" \
   -f message="add TITLE" \
-  -f content="$(printf '# TITLE\n\n**Status:** queued\n**Location:** URL' | base64 -w0)"
+  -f content="$(printf '# TITLE\n\nStatus: queued\nURL: <url>' | base64 -w0)"
 gh api --method PUT "repos/brfid/readings/contents/texts/<folder>/conversations.md" \
   -f message="add TITLE" \
   -f content="$(printf '' | base64 -w0)"
@@ -62,7 +82,7 @@ gh issue edit $N --add-label "reread,status:reading" --remove-label "status:done
 # ... then Finish as normal; "reread" persists through close
 
 # Reread — not yet tracked (no prior issue, e.g. read before this tracker existed)
-# No from: label, no texts/{folder}/ scaffolding, no [Agent context] link, no editorializing.
+# No texts/{folder}/ scaffolding, no [Agent context] link, no editorializing.
 gh issue create --title "TITLE" --label "status:queued,type:TYPE,reread" --body "**Author(s):** NAME
 **Type:** TYPE
 **Location:** URL" --repo brfid/readings
