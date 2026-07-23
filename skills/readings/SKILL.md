@@ -1,7 +1,7 @@
 ---
 name: readings
-description: "Use when tracking reading via brfid/readings GitHub Issues — add items, update status, query, search, discuss, or capture facts."
-version: 5.0.0
+description: "Use when adding to or updating the brfid/readings GitHub Issues reading tracker — add items, change status, comment, correct a fact, query, or search. Not for research or notes kept outside the tracker."
+version: 6.0.0
 author: Brad Fidler
 license: MIT
 metadata:
@@ -10,91 +10,97 @@ metadata:
 
 # Reads
 
-Personal reading tracker: GitHub Issues on `brfid/readings`. Every reading item is an Issue.
-Per-item context (CLAUDE.md, content.md) lives in `texts/{folder}/`. No custom code — everything
-goes through `gh issue` and `gh api`.
+Personal reading tracker: every item is a GitHub Issue on `brfid/readings`. No custom code and
+**no files** — `gh issue` and `gh api` do everything. Metadata lives in the issue body,
+commentary in issue comments; there is no per-item folder and no saved copy of any text.
 
-**SoC: README = canonical schema + ops reference. This skill = intent→command mapping.**
-If anything in this skill contradicts the README, the README wins.
+**Separation of concerns.** The [README](../../README.md) is the canonical reference — labels,
+body fields, the archiving recipe, and the publisher/identifier rules all live there. **This
+skill is only the intent → command mapping.** Load the README (local path above, or
+<https://github.com/brfid/readings#readme>) for any schema detail, and if the two ever
+disagree, **the README wins.** Keeping schema in one place is deliberate: it's what stops this
+skill from drifting out of date.
 
-## Setup (first-time)
+## When to use
 
-Labels must exist on the repo before use. Run once:
+Add / start / finish / abandon a reading item; comment or discuss; correct a metadata fact;
+query or search the list; review an item's timeline.
+
+**Do not use for:** general web research, literature reviews, or notes kept outside the tracker.
+
+## Conventions
+
+Run once per shell so every command can omit `--repo`:
+
 ```bash
-for label in status:queued status:reading status:done status:abandoned \
-             type:book type:article type:paper type:post; do
-  gh label create "$label" --repo brfid/readings --force
-done
+export GH_REPO=brfid/readings
 ```
 
-## When to Use
+Find an item's issue number, then store and reuse it:
 
-Add, start, finish, note, search, query, discuss, or save reading items.
-Query reading history via issue events.
-
-**Do NOT use for:** general web research, literature reviews, note-taking outside the tracker.
-
-## Architecture
-
-- **GitHub Issues** — source of truth. Title = item name. Labels = status + type. Body = metadata frontmatter + link to texts/.
-- **`texts/{folder}/`** — CLAUDE.md (agent context), content.md (saved content), conversations.md (discussion log; issue comments preferred for new discussions).
-- **No custom code** — `gh issue` and `gh api` handle all CRUD, including folder creation via the Contents API. No local clone is required for any operation.
-
-## Intent → Command
-
-Set `REPO=brfid/readings`. All commands run directly against GitHub — no local clone needed.
-**The README is the canonical schema + ops reference.** Labels, body template, folder-naming
-rules, and full commands are at https://github.com/brfid/readings#readme — load it if unsure.
-This skill adds only the intent→command mapping.
-
-**Finding the issue number** for a given title — run this once at the start, store the number:
 ```bash
-N=$(gh issue list --search "title" --repo "$REPO" --json number --jq '.[0].number')
+N=$(gh issue list --search "TITLE in:title" --json number --jq '.[0].number')
 ```
+
+If that's empty or ambiguous, `gh issue list --search "partial in:title"` lists candidates.
+First-time only: create the labels per README → **Setup**.
+
+## Add an item
+
+Web item (article / paper / post) — snapshot the URL first, then create:
+
+```bash
+# 1. Capture a verified snapshot (procedure + fallback: README → Archiving).
+#    SNAP is a web.archive.org URL, or the original URL if the source can't be archived.
+# 2. Create the issue. Full field rules (DOI for papers, when to include Publisher):
+#    README → Schema ▸ Body. Minimum is Author + Location + Archived.
+gh issue create --title "TITLE" --label "status:queued,type:post" --body "**Author(s):** NAME
+**Published:** YEAR
+**Location:** URL
+**Archived:** $SNAP"
+```
+
+Book — no URL, no archive; include ISBN (and Publisher):
+
+```bash
+gh issue create --title "TITLE" --label "status:queued,type:book" --body "**Author(s):** NAME
+**Published:** YEAR
+**Publisher:** NAME
+**ISBN:** 978-..."
+```
+
+## Status changes & other intents
 
 | Intent | Command |
 |--------|---------|
-| **Add** | See README "Operations" — creates `texts/<folder>/` via Contents API, then `gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "..."` |
-| **Start** | `N=$(...); gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --repo $REPO` |
-| **Finish** | `N=$(...); gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo $REPO && gh issue close $N --reason completed --repo $REPO` |
-| **Note** | `N=$(...); gh issue comment $N --body "NOTE TEXT" --repo $REPO` |
-| **Fact** | Update the issue body: `N=$(...); gh issue view $N --json body --jq .body ...` then `gh issue edit $N --body "..."`. Or just add a comment with the fact. |
-| **Discuss** | `N=$(...); gh issue comment $N --body "DISCUSSION TEXT" --repo $REPO` |
-| **Save** | Fetch URL → write `texts/{folder}/content.md` via the Contents API. No issue operation needed. |
-| **Query** | `gh issue list --label "status:reading" --repo $REPO` (or `status:queued`, `status:done --state closed`) |
-| **Search** | `gh issue list --search "keyword in:title,in:body" --repo $REPO` |
-| **History** | `N=$(...); gh api "/repos/$REPO/issues/$N/events" --jq '.[] \| "\(.created_at)  \(.event)  \(.label.name // "")"'` |
+| **Start** | `gh issue edit $N --add-label status:reading --remove-label status:queued` |
+| **Finish** | `gh issue edit $N --add-label status:done --remove-label status:reading && gh issue close $N --reason completed` |
+| **Abandon** | `gh issue edit $N --add-label status:abandoned --remove-label status:queued && gh issue close $N --reason "not planned"` (use `--remove-label status:reading` if you'd started it) |
+| **Comment / discuss** | `gh issue comment $N --body "COMMENT"` |
+| **Correct a fact** | `gh issue view $N --json body --jq .body` → edit the text → `gh issue edit $N --body "..."` |
+| **Query** | `gh issue list --label status:reading` (also `--label status:done --state closed`, `--label type:paper --state all`, …) |
+| **Search** | `gh issue list --search "keyword in:title,in:body"` |
 
-## Labels & Body Template
+## Reread
 
-See [README](https://github.com/brfid/readings#readme) — canonical reference. Quick reference below.
+- **Already tracked** (issue exists, `status:done`): `gh issue reopen $N && gh issue edit $N --add-label "reread,status:reading" --remove-label status:done`, then Finish as normal. `reread` persists through close.
+- **Not tracked** (read before this tracker existed):
 
-**Status labels:** `status:queued` (backlog), `status:reading`, `status:done` (close issue), `status:abandoned` (close --reason "not planned")
-**Type labels:** `type:book`, `type:article`, `type:paper`, `type:post`
+  ```bash
+  gh issue create --title "TITLE" --label "status:queued,type:TYPE,reread" --body "**Author(s):** NAME
+  **Location:** URL"
+  ```
 
-Body template (see README for full format): Author, Type, Location, optional Published/Publisher/ISBN/Rating, then link to `texts/folder/CLAUDE.md`.
+## Timeline
 
-## Matching Items
+The "when" (logged / started / finished) comes from issue and label-change timestamps, never a
+body field:
 
-`gh issue list --search` handles fuzzy matching natively. For exact title match:
 ```bash
-N=$(gh issue list --search "TITLE in:title" --repo $REPO --json number --jq '.[0].number')
+gh api "/repos/brfid/readings/issues/$N/events" --jq '.[] | "\(.created_at)  \(.event)  \(.label.name // "")"'
 ```
-
-If empty/ambiguous, `gh issue list --search "partial match in:title"` shows candidates.
-
-## Texts Folders
-
-See README "Folder naming" for the naming rule and README "Operations" → Add for the exact
-`gh api` commands that create `texts/{folder}/CLAUDE.md` and `conversations.md`.
-
-## Reference Files
-
-- `references/folder-agent-template.md` — CLAUDE.md/conversations.md generation and update rules for `texts/{folder}/`.
 
 ## Notes
 
-- `gh` CLI must be authenticated and have `repo` scope.
-- Issue body edits for facts: `gh issue view N --json body` → modify → `gh issue edit N --body "..."`
-- Timeline events show all label changes + comments with timestamps.
-- `conversations.md` files serve as local discussion log; issue comments are preferred for new discussions.
+- `gh` must be authenticated with `repo` scope.
+- Never create a file or folder, and never save a copy of a text — the issue is the whole record.
