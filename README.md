@@ -4,6 +4,9 @@ GitHub Issues are the source of truth. Any agent with the `gh` CLI, authenticate
 with `repo` scope against this repository, can run every operation below directly —
 no local clone required.
 
+Commands below assume `export GH_REPO=brfid/readings`, which lets `gh` drop the
+repeated `--repo` flag.
+
 ## Design principles
 
 - **A dimension you query on is a label; everything else is body text.** Never store the
@@ -42,26 +45,10 @@ Record only the fields that apply and that aren't already implied by the link:
   (a self-hosted PDF, mirror, or republication — e.g. a *Datamation* paper served from a
   personal site). Skip it when the domain already is the publisher (`github.blog` → GitHub).
 - **Location** — the URL, or `Books app` for physical/ebook copies
-- **Archived** — a verified Wayback (or archive.today) snapshot of the URL; the guard
-  against link rot. Web items only. Always try to capture one; if the source can't be
-  archived (see below), fall back to the current URL so the field still points somewhere.
+- **Archived** — a verified snapshot of the URL; the guard against link rot. Web items only.
+  See [Archiving](#archiving-link-rot-guard) for how to capture one and the fallback.
 
-### Comments
-
-Your own commentary — a reaction, a note, a quote worth keeping — goes in the issue's
-**comment thread**, never in the body. A comment exists only once you write one, so there's
-nothing blank to maintain. Discussion and follow-ups are just more comments on the same issue.
-
-## Setup (one-time)
-
-```
-for label in status:queued status:reading status:done status:abandoned \
-             type:book type:article type:paper type:post reread; do
-  gh label create "$label" --repo brfid/readings --force
-done
-```
-
-## Issue body templates
+Two shapes:
 
 ```
 # Web item (article / paper / post)
@@ -77,6 +64,21 @@ done
 **Publisher:** Name
 **ISBN:** 978-...
 **Location:** Books app
+```
+
+### Comments
+
+Your own commentary — a reaction, a note, a quote worth keeping — goes in the issue's
+**comment thread**, never in the body. A comment exists only once you write one, so there's
+nothing blank to maintain. Discussion and follow-ups are just more comments on the same issue.
+
+## Setup (one-time)
+
+```
+for label in status:queued status:reading status:done status:abandoned \
+             type:book type:article type:paper type:post reread; do
+  gh label create "$label" --force
+done
 ```
 
 ## Archiving (link-rot guard)
@@ -103,34 +105,34 @@ the `**Archived:**` value (`SNAP="$URL"`) so the field still resolves to somethi
 # Add item — archive first (web items), then create the issue with the snapshot URL
 gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "**Author(s):** NAME
 **Location:** URL
-**Archived:** SNAPSHOT" --repo brfid/readings
+**Archived:** SNAPSHOT"
 
 # Query
-gh issue list --label "status:reading" --repo brfid/readings
-gh issue list --label "type:paper" --state all --repo brfid/readings
+gh issue list --label "status:reading"
+gh issue list --label "type:paper" --state all
 
 # Search
-gh issue list --search "keyword in:title,in:body" --repo brfid/readings
+gh issue list --search "keyword in:title,in:body"
 
 # Start reading
-N=$(gh issue list --search "TITLE in:title" --repo brfid/readings --json number --jq '.[0].number')
-gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --repo brfid/readings
+N=$(gh issue list --search "TITLE in:title" --json number --jq '.[0].number')
+gh issue edit $N --add-label "status:reading" --remove-label "status:queued"
 
 # Finish
-gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo brfid/readings
-gh issue close $N --reason completed --repo brfid/readings
+gh issue edit $N --add-label "status:done" --remove-label "status:reading"
+gh issue close $N --reason completed
 
 # Reread — already tracked (issue exists, status:done): reopen + relabel
-gh issue reopen $N --repo brfid/readings
-gh issue edit $N --add-label "reread,status:reading" --remove-label "status:done" --repo brfid/readings
+gh issue reopen $N
+gh issue edit $N --add-label "reread,status:reading" --remove-label "status:done"
 # ... then Finish as normal; "reread" persists through close
 
 # Reread — not yet tracked (no prior issue, e.g. read before this tracker existed)
 gh issue create --title "TITLE" --label "status:queued,type:TYPE,reread" --body "**Author(s):** NAME
-**Location:** URL" --repo brfid/readings
+**Location:** URL"
 
 # Comment / discuss (your commentary lives in comments, never in the body or a file)
-gh issue comment $N --body "COMMENT" --repo brfid/readings
+gh issue comment $N --body "COMMENT"
 
 # Timeline (the "when" — logged / started / finished)
 gh api "/repos/brfid/readings/issues/$N/events" --jq '.[] | "\(.created_at)  \(.event)  \(.label.name // "")"'
