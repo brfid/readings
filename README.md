@@ -7,13 +7,15 @@ no local clone required.
 ## Design principles
 
 - **A dimension you query on is a label; everything else is body text.** Never store the
-  same fact in both. Status, type, and rating are labels — they don't appear in the body.
+  same fact in both. Status and type are labels — they don't appear in the body.
 - **Store only what you can't derive.** If the URL's domain already tells you the publisher,
   don't record the publisher.
 - **Record enough to survive link rot.** Author + year make a dead item re-findable; an
   archive snapshot preserves the actual text. Capture both when the source is on the web.
 - **No files.** No per-reading files or folders, no saved copies. Frontmatter lives in the
-  issue body; notes and discussion live in issue comments.
+  issue body; commentary lives in issue comments (see below).
+- **A field exists only when it has a value.** Never write a blank or placeholder field —
+  omit it. This is why commentary is an issue comment, not a body field: no comment, no field.
 - **Dates come from the issue, not the body.** Created = logged, closed = finished; the
   archive URL carries its own capture datetime. Don't add date fields.
 
@@ -23,12 +25,11 @@ no local clone required.
 
 - `status:{queued,reading,done,abandoned}`
 - `type:{book,article,paper,post}`
-- `rating:{1,2,3,4,5}` — optional, added when finished
 - `reread` — optional flag, any medium. Tense comes from the paired `status:` label
   (`queued`+`reread` = planning to reread, `reading`+`reread` = mid-reread,
   `done`+`reread` = have reread). Persists through close so reread history stays queryable.
 
-### Body (frontmatter only — no `Type`, no `Status`, no `Rating`; those are labels)
+### Body (frontmatter only — no `Type` or `Status`; those are labels)
 
 Record only the fields that apply and that aren't already implied by the link:
 
@@ -42,14 +43,20 @@ Record only the fields that apply and that aren't already implied by the link:
   personal site). Skip it when the domain already is the publisher (`github.blog` → GitHub).
 - **Location** — the URL, or `Books app` for physical/ebook copies
 - **Archived** — a verified Wayback (or archive.today) snapshot of the URL; the guard
-  against link rot. Web items only. Omit if the source can't be archived (see below).
+  against link rot. Web items only. Always try to capture one; if the source can't be
+  archived (see below), fall back to the current URL so the field still points somewhere.
+
+### Comments
+
+Your own commentary — a reaction, a note, a quote worth keeping — goes in the issue's
+**comment thread**, never in the body. A comment exists only once you write one, so there's
+nothing blank to maintain. Discussion and follow-ups are just more comments on the same issue.
 
 ## Setup (one-time)
 
 ```
 for label in status:queued status:reading status:done status:abandoned \
-             type:book type:article type:paper type:post \
-             rating:1 rating:2 rating:3 rating:4 rating:5 reread; do
+             type:book type:article type:paper type:post reread; do
   gh label create "$label" --repo brfid/readings --force
 done
 ```
@@ -87,8 +94,8 @@ SNAP=$(curl -s "https://archive.org/wayback/available?url=$URL" \
 ```
 
 If `$SNAP` is still empty (e.g. every.to returns HTTP 520 behind Cloudflare), the URL is
-not archivable via Wayback — try archive.today manually, or accept that the original link
-is the only copy and omit `**Archived:**`.
+not archivable via Wayback — try archive.today manually, or fall back to the current URL as
+the `**Archived:**` value (`SNAP="$URL"`) so the field still resolves to something.
 
 ## Operations (gh CLI)
 
@@ -100,7 +107,7 @@ gh issue create --title "TITLE" --label "status:queued,type:TYPE" --body "**Auth
 
 # Query
 gh issue list --label "status:reading" --repo brfid/readings
-gh issue list --label "rating:5" --state all --repo brfid/readings   # by rating
+gh issue list --label "type:paper" --state all --repo brfid/readings
 
 # Search
 gh issue list --search "keyword in:title,in:body" --repo brfid/readings
@@ -109,8 +116,8 @@ gh issue list --search "keyword in:title,in:body" --repo brfid/readings
 N=$(gh issue list --search "TITLE in:title" --repo brfid/readings --json number --jq '.[0].number')
 gh issue edit $N --add-label "status:reading" --remove-label "status:queued" --repo brfid/readings
 
-# Finish (add rating if you have one)
-gh issue edit $N --add-label "status:done,rating:4" --remove-label "status:reading" --repo brfid/readings
+# Finish
+gh issue edit $N --add-label "status:done" --remove-label "status:reading" --repo brfid/readings
 gh issue close $N --reason completed --repo brfid/readings
 
 # Reread — already tracked (issue exists, status:done): reopen + relabel
@@ -122,8 +129,8 @@ gh issue edit $N --add-label "reread,status:reading" --remove-label "status:done
 gh issue create --title "TITLE" --label "status:queued,type:TYPE,reread" --body "**Author(s):** NAME
 **Location:** URL" --repo brfid/readings
 
-# Note / discuss (notes live in comments, never in files)
-gh issue comment $N --body "NOTE" --repo brfid/readings
+# Comment / discuss (your commentary lives in comments, never in the body or a file)
+gh issue comment $N --body "COMMENT" --repo brfid/readings
 
 # Timeline (the "when" — logged / started / finished)
 gh api "/repos/brfid/readings/issues/$N/events" --jq '.[] | "\(.created_at)  \(.event)  \(.label.name // "")"'
